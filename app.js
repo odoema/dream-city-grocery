@@ -192,6 +192,16 @@
         descriptions[3].textContent = 'Based on live stock';
       }
     }
+    const chart = document.querySelector('#dashboard-view .chart');
+    if (chart) {
+      chart.innerHTML = '<p class="muted">Historical sales chart is not implemented yet. The transaction table below shows recent recorded sales.</p>';
+      chart.style.height = 'auto';
+      chart.style.padding = '14px 0';
+    }
+    const salesSubtitle = document.querySelector('#dashboard-view .sales-panel .panel-heading p');
+    if (salesSubtitle) salesSubtitle.textContent = 'Historical trend pending — not demo figures';
+    const recentSubtitle = document.querySelector('#dashboard-view .recent-panel .panel-heading p');
+    if (recentSubtitle) recentSubtitle.textContent = 'Latest recorded transactions from the database';
     const dashboardNotice = document.querySelector('#dashboard-view .notice');
     if (dashboardNotice) {
       dashboardNotice.innerHTML = '<b>Live data</b><span>Products and recent sales are loaded from Dream City Supabase. Financial statements and purchases are not yet implemented.</span>';
