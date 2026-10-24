@@ -720,6 +720,47 @@
   $('add-product').addEventListener('click', addProduct);
   $('add-customer').addEventListener('click', addCustomer);
   $('print-last-receipt').addEventListener('click', () => printReceipt(lastReceipt));
+  $('toggle-password').addEventListener('click', () => {
+    const field = $('login-password'), show = field.type === 'password';
+    field.type = show ? 'text' : 'password';
+    $('toggle-password').textContent = show ? 'Hide' : 'Show';
+    $('toggle-password').setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    $('toggle-password').setAttribute('aria-pressed', String(show));
+  });
+  $('forgot-password').addEventListener('click', () => {
+    $('sign-in-form').classList.add('hidden'); $('reset-request-form').classList.remove('hidden');
+    $('reset-email').value = $('login-email').value.trim(); setMessage(''); $('reset-email').focus();
+  });
+  $('back-to-sign-in').addEventListener('click', () => {
+    $('reset-request-form').classList.add('hidden'); $('new-password-form').classList.add('hidden');
+    $('sign-in-form').classList.remove('hidden'); setMessage(''); $('login-email').focus();
+  });
+  $('reset-request-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!client) return setMessage('Password recovery is not configured. Contact your administrator.', true);
+    const button=$('send-reset-link'); button.disabled=true; button.textContent='Sending secure link…';
+    const redirectTo=new URL(window.location.href); redirectTo.hash='';
+    const result=await client.auth.resetPasswordForEmail($('reset-email').value.trim(),{redirectTo:redirectTo.toString()});
+    button.disabled=false; button.textContent='Send reset link →';
+    if(result.error)return setMessage(result.error.message,true);
+    setMessage('If an account exists for that email, a reset link has been sent. Check your inbox and spam folder.');
+  });
+  $('new-password-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!client) return setMessage('Password recovery is not configured. Contact your administrator.',true);
+    const password=$('new-password').value;
+    if(password!==$('confirm-password').value)return setMessage('The passwords do not match.',true);
+    if(password.length<8)return setMessage('Use at least 8 characters for your new password.',true);
+    const button=$('save-new-password');button.disabled=true;button.textContent='Saving password…';
+    const result=await client.auth.updateUser({password});
+    button.disabled=false;button.textContent='Save new password →';
+    if(result.error)return setMessage(result.error.message,true);
+    $('new-password-form').classList.add('hidden');$('sign-in-form').classList.remove('hidden');
+    $('login-password').value='';$('new-password').value='';$('confirm-password').value='';
+    setMessage('Password updated. You can now sign in with your new password.');
+  });
+  const recoveryMode=window.location.hash.includes('type=recovery')||new URLSearchParams(window.location.search).get('type')==='recovery';
+  if(recoveryMode){$('sign-in-form').classList.add('hidden');$('reset-request-form').classList.add('hidden');$('new-password-form').classList.remove('hidden');$('auth-title').textContent='Set a new password';}
   $('sign-in-form').addEventListener('submit', async event => {
     event.preventDefault();
     if (!client) return setMessage('Supabase is not configured. Edit supabase-config.js with the dedicated project publishable/anon key.', true);
