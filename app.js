@@ -801,10 +801,15 @@ Available SKUs:
     if (!client) return setMessage('Password recovery is not configured. Contact your administrator.', true);
     const button=$('send-reset-link'); button.disabled=true; button.textContent='Sending secure link…';
     const redirectTo=new URL(window.location.href); redirectTo.hash='';
-    const result=await client.auth.resetPasswordForEmail($('reset-email').value.trim(),{redirectTo:redirectTo.toString()});
-    button.disabled=false; button.textContent='Send reset link →';
-    if(result.error)return setMessage(result.error.message,true);
-    setMessage('If an account exists for that email, a reset link has been sent. Check your inbox and spam folder.');
+    try {
+      const result=await client.auth.resetPasswordForEmail($('reset-email').value.trim(),{redirectTo:redirectTo.toString()});
+      if(result.error) throw result.error;
+      setMessage('If an account exists for that email, a reset link has been sent. Check your inbox and spam folder. If it does not arrive, check Spam and ask the administrator to verify the Supabase email settings.');
+    } catch(error) {
+      setMessage('Could not send the reset email: '+(error.message||'Check your internet connection and Supabase email settings.'),true);
+    } finally {
+      button.disabled=false; button.textContent='Send reset link →';
+    }
   });
   $('new-password-form').addEventListener('submit', async event => {
     event.preventDefault();
@@ -813,12 +818,17 @@ Available SKUs:
     if(password!==$('confirm-password').value)return setMessage('The passwords do not match.',true);
     if(password.length<8)return setMessage('Use at least 8 characters for your new password.',true);
     const button=$('save-new-password');button.disabled=true;button.textContent='Saving password…';
-    const result=await client.auth.updateUser({password});
-    button.disabled=false;button.textContent='Save new password →';
-    if(result.error)return setMessage(result.error.message,true);
-    $('new-password-form').classList.add('hidden');$('sign-in-form').classList.remove('hidden');
-    $('login-password').value='';$('new-password').value='';$('confirm-password').value='';
-    setMessage('Password updated. You can now sign in with your new password.');
+    try {
+      const result=await client.auth.updateUser({password});
+      if(result.error) throw result.error;
+      $('new-password-form').classList.add('hidden');$('sign-in-form').classList.remove('hidden');
+      $('login-password').value='';$('new-password').value='';$('confirm-password').value='';
+      setMessage('Password updated. You can now sign in with your new password.');
+    } catch(error) {
+      setMessage('Could not update the password: '+(error.message||'Open the password-reset link again and retry.'),true);
+    } finally {
+      button.disabled=false;button.textContent='Save new password →';
+    }
   });
   const recoveryMode=window.location.hash.includes('type=recovery')||new URLSearchParams(window.location.search).get('type')==='recovery';
   if(recoveryMode){$('sign-in-form').classList.add('hidden');$('reset-request-form').classList.add('hidden');$('new-password-form').classList.remove('hidden');$('auth-title').textContent='Set a new password';}
@@ -868,23 +878,29 @@ Available SKUs:
     // Subscribe before reading the stored session so sign-in events cannot be
     // missed during initialization. Ignore duplicate initial-session callbacks;
     // the explicit getSession result is authoritative for initial page load.
-    let initialized = false;
+    // If a real auth event arrives while getSession() is pending, never let
+    // the older initial-session response overwrite that newer sign-in.
+    let authEventSeen = false;
     client.auth.onAuthStateChange((event, session) => {
       if (event === 'INITIAL_SESSION') return;
+      authEventSeen = true;
       // Avoid awaiting network work inside Supabase's auth event callback.
       setTimeout(() => onSession(session), 0);
     });
     client.auth.getSession().then(({ data, error }) => {
-      initialized = true;
       if (error) {
-        setConnectionStatus('Connection issue', 'Could not restore sign-in session', 'error');
-        setMessage('Could not restore your sign-in session. Refresh the page and try again.', true);
+        if (!authEventSeen) {
+          setConnectionStatus('Connection issue', 'Could not restore sign-in session', 'error');
+          setMessage('Could not restore your sign-in session. Refresh the page and try again.', true);
+        }
         return;
       }
-      if (initialized) onSession(data?.session || null);
+      if (!authEventSeen) onSession(data?.session || null);
     }).catch(() => {
-      setConnectionStatus('Connection issue', 'Could not restore sign-in session', 'error');
-      setMessage('Could not contact the sign-in service. Check your connection and refresh the page.', true);
+      if (!authEventSeen) {
+        setConnectionStatus('Connection issue', 'Could not restore sign-in session', 'error');
+        setMessage('Could not contact the sign-in service. Check your connection and refresh the page.', true);
+      }
     });
   }
 })();
