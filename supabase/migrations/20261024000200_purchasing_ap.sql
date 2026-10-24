@@ -173,6 +173,9 @@ begin
     if exists(select 1 from jsonb_array_elements(p_items) e where (e->>'product_id')::uuid=v_product_id group by (e->>'product_id') having count(*)>1) then raise exception 'Combine duplicate product lines before receiving'; end if;
     select * into v_product from public.products where id=v_product_id and active for update;
     if not found then raise exception 'A received product is inactive or missing'; end if;
+    if p_purchase_order_id is not null and not exists(select 1 from public.purchase_order_items poi where poi.purchase_order_id=p_purchase_order_id and poi.product_id=v_product_id and poi.quantity_received+v_qty<=poi.quantity_ordered) then
+      raise exception 'Received quantity exceeds or does not match the selected purchase order';
+    end if;
     v_total := v_total + round(v_qty*v_cost,2);
   end loop;
   if v_total<=0 then raise exception 'Invoice total must be greater than zero'; end if;
@@ -207,9 +210,12 @@ begin
   insert into public.goods_receipts(receipt_number,invoice_id,received_by,notes)
   values(v_receipt_number,v_invoice_id,v_actor,coalesce(p_notes,'Goods received')) returning id into v_receipt_id;
   if p_purchase_order_id is not null then
-    update public.purchase_orders set status='received' where id=p_purchase_order_id;
-    update public.purchase_order_items poi set quantity_received=quantity_ordered
-    where poi.purchase_order_id=p_purchase_order_id;
+    for v_item in select e from jsonb_array_elements(p_items) e loop
+      update public.purchase_order_items set quantity_received=quantity_received+(v_item->>'quantity')::numeric
+      where purchase_order_id=p_purchase_order_id and product_id=(v_item->>'product_id')::uuid;
+    end loop;
+    update public.purchase_orders set status=case when not exists(select 1 from public.purchase_order_items poi where poi.purchase_order_id=p_purchase_order_id and poi.quantity_received<poi.quantity_ordered) then 'received' else 'part_received' end
+    where id=p_purchase_order_id;
   end if;
   insert into public.audit_log(actor_id,action,entity_type,entity_id,details)
   values(v_actor,'supplier_invoice.received','supplier_invoice',v_invoice_id,jsonb_build_object('invoice_number',trim(p_invoice_number),'total',v_total,'receipt_number',v_receipt_number));
