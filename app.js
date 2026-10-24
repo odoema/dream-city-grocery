@@ -400,9 +400,7 @@
   function chooseSupplier() {
     const active = suppliers.filter(s=>s.active);
     if (!active.length) { toast('Add a supplier first.'); return null; }
-    const answer = prompt('Choose supplier by number:
-'+active.map((s,i)=>(i+1)+'. '+s.name+(s.phone?' · '+s.phone:'')).join('
-'));
+    const answer = prompt('Choose supplier by number:\n' + active.map((s,i)=>(i+1)+'. '+s.name+(s.phone?' · '+s.phone:'')).join('\n'));
     if (answer===null) return null;
     const n=Number(answer);
     if (!Number.isInteger(n)||n<1||n>active.length) { toast('Invalid supplier selection.'); return null; }
@@ -412,11 +410,7 @@
   function promptPurchaseItems(title) {
     const activeProducts = products.filter(p=>p.active);
     if (!activeProducts.length) { toast('Add products to inventory first.'); return null; }
-    const raw = prompt(title+'
-Enter each line as SKU:quantity:unit_cost, separated by semicolons.
-Available SKUs:
-'+activeProducts.map(p=>p.sku+' — '+p.name).join('
-'));
+    const raw = prompt(title + '\nEnter each line as SKU:quantity:unit_cost, separated by semicolons.\nAvailable SKUs:\n' + activeProducts.map(p=>p.sku+' — '+p.name).join('\n'));
     if (raw===null) return null;
     const items=[];
     for (const part of raw.split(';')) {
@@ -467,9 +461,7 @@ Available SKUs:
     const orderCandidates=purchaseOrders.filter(o=>o.supplier_id===supplier.id&&['ordered','part_received'].includes(o.status));
     let orderId=null;
     if(orderCandidates.length){
-      const use=prompt('Optional purchase order number to match (leave blank if not linked):
-'+orderCandidates.map(o=>o.order_number).join('
-'),'');
+      const use=prompt('Optional purchase order number to match (leave blank if not linked):\n' + orderCandidates.map(o=>o.order_number).join('\n'),'');
       if(use===null)return;
       if(use.trim()){
         const order=orderCandidates.find(o=>o.order_number.toLowerCase()===use.trim().toLowerCase());
