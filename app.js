@@ -181,16 +181,21 @@
 
   async function loadData() {
     if (!client || !profile) return;
-    const [productResult, categoryResult, customerResult, saleResult] = await Promise.all([
+    const now = new Date();
+    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const [productResult, categoryResult, customerResult, saleResult, todaySalesResult] = await Promise.all([
       client.from('products').select('*, categories(name)').order('name'),
       client.from('categories').select('id,name').eq('active', true).order('name'),
       client.from('customers').select('id,name,phone,credit_limit').eq('active', true).order('name'),
-      client.from('sales').select('id,receipt_number,cashier_id,payment_method,total,status,created_at,profiles(full_name)').order('created_at', { ascending: false }).limit(30)
+      client.from('sales').select('id,receipt_number,cashier_id,payment_method,total,status,created_at,profiles(full_name)').order('created_at', { ascending: false }).limit(30),
+      client.from('sales').select('total,created_at').eq('status', 'completed').gte('created_at', dayStart.toISOString()).lt('created_at', dayEnd.toISOString())
     ]);
     if (productResult.error) throw productResult.error;
     if (categoryResult.error && categoryResult.error.code !== '42501') throw categoryResult.error;
     if (customerResult.error && customerResult.error.code !== '42501') throw customerResult.error;
     if (saleResult.error && saleResult.error.code !== '42501') throw saleResult.error;
+    if (todaySalesResult.error) throw todaySalesResult.error;
     products = productResult.data || [];
     categories = categoryResult.data || [];
     customers = customerResult.data || [];
@@ -203,14 +208,14 @@
     renderCustomerSelect();
     const dashboardMetrics = document.querySelectorAll('#dashboard-view .metric strong');
     if (dashboardMetrics.length >= 4) {
-      const todays = sales.filter(s => new Date(s.created_at).toDateString() === new Date().toDateString());
+      const todays = todaySalesResult.data || [];
       dashboardMetrics[0].textContent = fmt(todays.reduce((sum, s) => sum + Number(s.total), 0));
       dashboardMetrics[1].textContent = '—';
       dashboardMetrics[2].textContent = String(todays.length);
       dashboardMetrics[3].textContent = products.filter(p => p.active && stockOf(p) <= Number(p.reorder_level || 0)).length + ' products';
       const descriptions = document.querySelectorAll('#dashboard-view .metric small');
       if (descriptions.length >= 4) {
-        descriptions[0].textContent = 'Recorded sales today (latest 30 loaded)';
+        descriptions[0].textContent = 'Recorded completed sales today (all rows returned)';
         descriptions[1].textContent = 'See Accounting for posted journal totals';
         descriptions[2].textContent = 'Latest 30 sales loaded';
         descriptions[3].textContent = 'Based on live stock';
@@ -231,7 +236,7 @@
       dashboardNotice.innerHTML = '<b>Live data</b><span>Products and recent sales are live. Purchasing and accounts payable are available after applying the purchasing migration; Balance Sheet and Cash Flow reports remain pending.</span>';
     }
     const reportNotice = document.querySelector('#reports-view .notice');
-    if (reportNotice) reportNotice.innerHTML = '<b>Live sales</b><span>Showing the latest 30 database sales available to your staff role.</span>';
+    if (reportNotice) reportNotice.innerHTML = '<b>Live sales</b><span>Showing the latest 30 database sales available to your staff role. CSV export and historical analytics are not yet implemented.</span>';
     const footer = document.querySelector('footer .footer-demo');
     if (footer) footer.textContent = 'Connected · Live database';
   }
