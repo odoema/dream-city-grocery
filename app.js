@@ -845,9 +845,9 @@ Available SKUs:
         setMessage(result.error.message, true);
         return;
       }
-      // The auth-state listener handles the session/profile transition. Calling
-      // onSession here as well caused duplicate concurrent profile/data loads.
-      setMessage('Credentials accepted. Verifying staff access…');
+      // Handle this sign-in result directly. The listener skips SIGNED_IN to
+      // avoid processing the same session twice.
+      await onSession(result.data.session);
     } catch (error) {
       setMessage('Unable to reach the sign-in service. Check your internet connection and try again.', true);
     } finally {
@@ -882,7 +882,7 @@ Available SKUs:
     // the older initial-session response overwrite that newer sign-in.
     let authEventSeen = false;
     client.auth.onAuthStateChange((event, session) => {
-      if (event === 'INITIAL_SESSION') return;
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') return;
       authEventSeen = true;
       // Avoid awaiting network work inside Supabase's auth event callback.
       setTimeout(() => onSession(session), 0);
