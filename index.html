@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#142d63" />
+  <title>Dream City Grocery | POS</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand"><img src="public/dream-city-logo.jpg" alt="Dream City — Empowering Communities" /><div><b>Dream City</b><span>Grocery</span></div></div>
+    <div class="nav-label">WORKSPACE</div>
+    <button class="nav active" data-view="dashboard">▦ <span>Dashboard</span></button>
+    <button class="nav" data-view="pos">▣ <span>Point of Sale</span></button>
+    <button class="nav" data-view="inventory">▤ <span>Inventory</span></button>
+    <button class="nav" data-view="purchases">⇩ <span>Purchases</span></button>
+    <button class="nav" data-view="accounting">▥ <span>Accounting</span></button>
+    <button class="nav" data-view="reports">▧ <span>Reports</span></button>
+    <div class="sidebar-bottom"><span class="online-dot"></span> Demo mode <small>Not connected to live data</small></div>
+  </aside>
+  <main class="main">
+    <header class="topbar"><div><p class="eyebrow">DREAM CITY GROCERY</p><h1 id="page-title">Owner dashboard</h1></div><div class="top-actions"><span class="date-pill" id="today"></span><div class="avatar">DC</div></div></header>
+    <section id="dashboard-view" class="view">
+      <div class="welcome"><div><h2>Good evening 👋</h2><p>Here's what's happening in your shop.</p></div><button class="primary" data-goto="pos">＋ New sale</button></div>
+      <div class="notice"><b>Prototype preview</b><span>Figures below are sample data. Connect Supabase before using for real transactions.</span></div>
+      <div class="metrics">
+        <article class="metric"><div class="metric-top"><span>Today's sales</span><span class="metric-icon blue">↗</span></div><strong>UGX 2,450,000</strong><small class="positive">↑ 8.4% <span>vs yesterday</span></small></article>
+        <article class="metric"><div class="metric-top"><span>Gross profit</span><span class="metric-icon gold">◈</span></div><strong>UGX 620,000</strong><small class="muted">Sample calculation</small></article>
+        <article class="metric"><div class="metric-top"><span>Transactions</span><span class="metric-icon blue">▣</span></div><strong>87</strong><small class="positive">Across all payment types</small></article>
+        <article class="metric"><div class="metric-top"><span>Low-stock items</span><span class="metric-icon red">!</span></div><strong>7 products</strong><small class="warning-text">Needs attention</small></article>
+      </div>
+      <div class="dashboard-grid"><article class="panel sales-panel"><div class="panel-heading"><div><h3>Sales overview</h3><p>Sample daily revenue · UGX</p></div><span class="tag">Last 7 days</span></div><div class="chart" aria-label="Sample sales chart"><div class="y-labels"><span>3M</span><span>2M</span><span>1M</span><span>0</span></div><div class="bars"><div class="bar-wrap"><i style="height:43%"></i><span>Fri</span></div><div class="bar-wrap"><i style="height:58%"></i><span>Sat</span></div><div class="bar-wrap"><i style="height:47%"></i><span>Sun</span></div><div class="bar-wrap"><i style="height:72%"></i><span>Mon</span></div><div class="bar-wrap"><i style="height:63%"></i><span>Tue</span></div><div class="bar-wrap"><i style="height:86%"></i><span>Wed</span></div><div class="bar-wrap today-bar"><i style="height:76%"></i><span>Thu</span></div></div></div></article>
+      <article class="panel"><div class="panel-heading"><div><h3>Stock alerts</h3><p>Sample inventory warnings</p></div><button class="text-button" data-goto="inventory">View all</button></div><div id="stock-alerts" class="stock-alerts"></div></article></div>
+      <article class="panel recent-panel"><div class="panel-heading"><div><h3>Recent transactions</h3><p>Illustrative activity feed</p></div><button class="text-button" data-goto="reports">All transactions</button></div><div class="table-wrap"><table><thead><tr><th>Receipt</th><th>Time</th><th>Cashier</th><th>Payment</th><th>Amount</th><th>Status</th></tr></thead><tbody id="recent-sales"></tbody></table></div></article>
+    </section>
+    <section id="pos-view" class="view hidden"><div class="pos-layout"><div class="panel products-panel"><div class="panel-heading"><div><h3>Products</h3><p>Select items to add them to the sale</p></div><span class="tag">Demo catalogue</span></div><input id="product-search" class="search" placeholder="⌕  Search product or SKU…" /><div id="product-grid" class="product-grid"></div></div><div class="panel cart-panel"><div class="panel-heading"><div><h3>Current sale</h3><p id="cart-count">0 items</p></div><button id="clear-cart" class="text-button">Clear</button></div><div id="cart-items" class="cart-items"><div class="empty-cart">Your cart is empty.<br/>Choose a product to begin.</div></div><div class="cart-summary"><div><span>Subtotal</span><b id="subtotal">UGX 0</b></div><div><span>Tax</span><b>UGX 0</b></div><div class="total-row"><span>Total due</span><strong id="total">UGX 0</strong></div><label for="payment-method">Payment method</label><select id="payment-method"><option>Cash</option><option>Mobile Money</option><option>Card</option><option>Credit</option></select><button id="checkout" class="primary full">Complete demo sale</button><p class="fine-print">Demo only — no stock or financial records are saved.</p></div></div></div></section>
+    <section id="inventory-view" class="view hidden"><div class="welcome"><div><h2>Inventory</h2><p>Products, buying/selling prices and reorder levels.</p></div><button class="primary" id="add-product">＋ Add product</button></div><article class="panel"><div class="panel-heading"><div><h3>Product catalogue</h3><p>Sample data — UGX</p></div><input id="inventory-search" class="search compact" placeholder="Search products…" /></div><div class="table-wrap"><table><thead><tr><th>SKU</th><th>Product</th><th>Category</th><th>Buy price</th><th>Sell price</th><th>In stock</th><th>Reorder at</th><th>Status</th></tr></thead><tbody id="inventory-table"></tbody></table></div></article></section>
+    <section id="purchases-view" class="view hidden"><div class="welcome"><div><h2>Purchases</h2><p>Supplier purchases and goods received.</p></div></div><div class="notice"><b>Planned module</b><span>Purchase orders, supplier invoices, goods receiving and accounts payable will be implemented against Supabase.</span></div><div class="empty-module">⇩<h3>Purchase management</h3><p>Next milestone: suppliers, purchase orders, stock receiving and supplier balances.</p></div></section>
+    <section id="accounting-view" class="view hidden"><div class="welcome"><div><h2>Accounting</h2><p>Double-entry bookkeeping and financial statements.</p></div></div><div class="notice"><b>Accounting safeguards</b><span>Live posting is not enabled. Each posted transaction must generate balanced, auditable journal entries.</span></div><div class="metrics"><article class="metric"><span>Sales revenue</span><strong>UGX 0</strong><small class="muted">Connect database</small></article><article class="metric"><span>Cost of goods sold</span><strong>UGX 0</strong><small class="muted">Connect database</small></article><article class="metric"><span>Operating expenses</span><strong>UGX 0</strong><small class="muted">Connect database</small></article><article class="metric"><span>Net profit</span><strong>UGX 0</strong><small class="muted">Connect database</small></article></div><article class="panel"><h3>Planned financial reports</h3><div class="report-list"><span>Trial Balance</span><span>General Ledger</span><span>Profit & Loss</span><span>Balance Sheet</span><span>Cash Flow Statement</span><span>Accounts Payable / Receivable</span></div></article></section>
+    <section id="reports-view" class="view hidden"><div class="welcome"><div><h2>Reports & analytics</h2><p>Sales, inventory and financial performance.</p></div><button class="secondary" id="export-demo">Export sample CSV</button></div><div class="notice"><b>Reports use demo data</b><span>Live reports will be derived from posted transactions, not manually editable totals.</span></div><article class="panel"><div class="panel-heading"><div><h3>Transaction register</h3><p>Recent sample sales</p></div></div><div class="table-wrap"><table><thead><tr><th>Receipt</th><th>Date</th><th>Cashier</th><th>Payment</th><th>Amount</th><th>Status</th></tr></thead><tbody id="report-sales"></tbody></table></div></article></section>
+    <footer>Dream City Grocery · Empowering Communities · <span>UGX</span> <span class="footer-demo">Prototype / Demo mode</span></footer>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
