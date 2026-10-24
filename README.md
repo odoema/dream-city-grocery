@@ -495,3 +495,34 @@ The most important constraints are:
 **Connect the existing POS UI to the temporary `dreamcity` Supabase schema and implement authenticated live checkout using `dreamcity.complete_sale()`.**
 
 Do not add more demo-only checkout logic when the real database transaction is available. The next implementation should make the POS perform a genuine database-backed sale and then build receipt/notification automation around that confirmed transaction.
+
+
+## 23. Production protection: SmartAttend.live
+
+**Critical production safety rule — SmartAttend.live serves paying clients. Protect its availability and data above all else.**
+
+The temporary Dream City development setup shares a Supabase project with SmartAttend. A separate PostgreSQL schema provides logical separation, but it does **not** provide full infrastructure isolation: database-wide permissions, resource usage, project settings, or an incorrectly scoped SQL statement can still affect SmartAttend.
+
+Until Dream City has been migrated and validated in its own Supabase project:
+
+- **Do not run destructive or broad SQL** in the shared project. Never use database resets, `DROP SCHEMA ... CASCADE`, broad table drops/truncates, or unreviewed migrations.
+- **Never modify SmartAttend's `public` schema**, its tables, functions, triggers, policies, extensions, authentication configuration, production settings, or client records as part of Dream City work.
+- Scope Dream City database changes explicitly to `dreamcity`; review every statement before execution. Do not assume that a migration is safe merely because its filename mentions Dream City.
+- Do not run `supabase/migrations/001_initial_schema.sql` against the shared project without reviewing every statement; older migration files may create or alter objects outside `dreamcity`.
+- Read-only inspection is preferred while investigating. A read-only query should inspect the intended schema explicitly and must not expose secrets or personal client data.
+- Do not replace `dreamcity.complete_sale(...)` or apply another database migration until the proposed SQL has been reviewed, its scope is confirmed, and a viable backup/recovery path is verified.
+- Test financial and permission changes using disposable test data in an isolated environment first. Never test by creating fake sales or changing real stock in a live business database.
+- Keep Supabase service-role/secret keys and database passwords out of chat, source code, browser code, commits, logs, and screenshots.
+- Do not claim SmartAttend is unaffected based only on a successful GitHub Actions run; application CI does not verify live database isolation or production health.
+
+### Required target before production
+
+The long-term safe architecture is a **dedicated Supabase project for Dream City Grocery**. Use separate credentials, authentication configuration, backups, and deployment settings. The intended project reference is `nohdgmylncjtdymfshfy`.
+
+Do not move, delete, or retire the temporary `dreamcity` schema from the SmartAttend project until the dedicated target is available, the Dream City data has been migrated and reconciled, and the application has been verified against the dedicated target. Any later cleanup must be a separately reviewed operation with a confirmed recovery path; it must not affect SmartAttend's `public` schema or paying clients.
+
+### Current safety gate
+
+At the time of this note, the installed `dreamcity.complete_sale(...)` function is under review. Its replacement is **not approved or applied by this README update**. Tax accounting treatment remains undecided, so a reviewed checkout change must reject non-zero tax until an appropriate tax liability/accounting policy is established. Card receipts are intended to post to Bank account `1020`, and discounts require owner/manager authorization.
+
+**Default decision when uncertain: stop and inspect; do not execute. SmartAttend.live stability takes precedence over Dream City development speed.**
