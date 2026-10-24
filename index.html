@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#142d63" />
+  <meta name="theme-color" content="#126747" />
   <title>Dream City Grocery | POS</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <aside class="sidebar">
-    <div class="brand"><img src="public/dream-city-logo.jpg" alt="Dream City — Empowering Communities" /><div><b>Dream City</b><span>Grocery</span></div></div>
+    <div class="brand"><img src="public/dream_logo.jpeg" alt="Dream City — Empowering Communities" /><div><b>Dream City</b><span>Grocery</span></div></div>
     <div class="nav-label">WORKSPACE</div>
     <button class="nav active" data-view="dashboard">▦ <span>Dashboard</span></button>
     <button class="nav" data-view="pos">▣ <span>Point of Sale</span></button>
@@ -22,16 +22,33 @@
   </aside>
   <main class="main">
     <header class="topbar"><div><p class="eyebrow">DREAM CITY GROCERY</p><h1 id="page-title">Owner dashboard</h1></div><div class="top-actions"><span id="staff-status" class="date-pill">Not signed in</span><span class="date-pill" id="today"></span><button id="sign-out" class="secondary hidden" type="button">Sign out</button><div class="avatar">DC</div></div></header>
-    <section id="auth-panel" class="panel" aria-labelledby="auth-title">
-      <h2 id="auth-title">Staff sign in</h2>
-      <p class="muted" style="margin:8px 0 18px">Sign in with the staff account created for Dream City Grocery.</p>
-      <form id="sign-in-form">
-        <label for="login-email">Email address</label><input id="login-email" class="search" type="email" autocomplete="username" required />
-        <label for="login-password">Password</label><input id="login-password" class="search" type="password" autocomplete="current-password" required />
-        <button id="sign-in-button" class="primary" type="submit">Sign in</button>
-        <p id="auth-message" role="status" aria-live="polite" class="fine-print"></p>
-      </form>
-      <div id="config-warning" class="notice hidden"><b>Setup required</b><span>Configure the dedicated Supabase project URL and publishable/anon key in supabase-config.js, then apply the versioned migration. Do not put a service-role key in this website.</span></div>
+    <section id="auth-panel" class="auth-shell" aria-labelledby="auth-title">
+      <div class="auth-story">
+        <div class="auth-brand"><img src="public/dream_logo.jpeg" alt="Dream City Grocery logo"><span>Dream City <b>Grocery</b></span></div>
+        <span class="auth-kicker"><i></i> YOUR SHOP. IN GOOD HANDS.</span>
+        <h2>Every good day<br>starts <em>fresh.</em></h2>
+        <p>A calmer, smarter way to run your store — from the first sale to the last stock count.</p>
+        <div class="auth-benefits">
+          <div><span class="benefit-icon">↗</span><span><b>Know your numbers</b><small>Sales and performance at a glance</small></span></div>
+          <div><span class="benefit-icon">▦</span><span><b>Keep stock in control</b><small>Inventory, purchases and stocktaking</small></span></div>
+          <div><span class="benefit-icon">✓</span><span><b>Work with confidence</b><small>Role-based access for your team</small></span></div>
+        </div><div class="auth-story-footer">✳ &nbsp; Good food builds better communities.</div>
+      </div>
+      <div class="auth-card-wrap"><div class="auth-card">
+        <div class="mobile-auth-brand"><img src="public/dream_logo.jpeg" alt="">Dream City <b>Grocery</b></div>
+        <div class="auth-card-heading"><span class="auth-lock">⌑</span><p class="eyebrow">STAFF PORTAL</p><h2 id="auth-title">Welcome back</h2><p class="muted">Sign in to continue to your workspace.</p></div>
+        <form id="sign-in-form" class="auth-form">
+          <label for="login-email">Email address</label><input id="login-email" class="search" type="email" autocomplete="username" placeholder="you@dreamcity.com" required>
+          <div class="password-label"><label for="login-password">Password</label><button id="forgot-password" class="auth-link" type="button">Forgot password?</button></div>
+          <div class="password-field"><input id="login-password" class="search" type="password" autocomplete="current-password" placeholder="Enter your password" required><button id="toggle-password" class="password-toggle" type="button" aria-label="Show password" aria-pressed="false">Show</button></div>
+          <button id="sign-in-button" class="primary auth-submit" type="submit"><span>Sign in securely</span><span aria-hidden="true">→</span></button>
+          <p id="auth-message" role="status" aria-live="polite" class="fine-print"></p>
+        </form>
+        <form id="reset-request-form" class="auth-form hidden"><button id="back-to-sign-in" class="auth-link back-link" type="button">← Back to sign in</button><h3>Reset your password</h3><p class="muted">We'll email you a secure link to choose a new password.</p><label for="reset-email">Work email address</label><input id="reset-email" class="search" type="email" autocomplete="email" placeholder="you@dreamcity.com" required><button id="send-reset-link" class="primary auth-submit" type="submit">Send reset link →</button></form>
+        <form id="new-password-form" class="auth-form hidden"><h3>Choose a new password</h3><p class="muted">Use at least 8 characters that you don't use elsewhere.</p><label for="new-password">New password</label><input id="new-password" class="search" type="password" autocomplete="new-password" minlength="8" required><label for="confirm-password">Confirm new password</label><input id="confirm-password" class="search" type="password" autocomplete="new-password" minlength="8" required><button id="save-new-password" class="primary auth-submit" type="submit">Save new password →</button></form>
+        <div id="config-warning" class="notice hidden"><b>Setup required</b><span>Configure the dedicated Supabase project URL and publishable/anon key in supabase-config.js. Never put a service-role key in this website.</span></div>
+        <div class="auth-security">▣ &nbsp; Secure staff access &nbsp; · &nbsp; Dream City Grocery</div>
+      </div><p class="auth-help">Need access? Contact your store administrator.</p></div>
     </section>
     <section id="dashboard-view" class="view">
       <div class="welcome"><div><h2>Good evening 👋</h2><p>Here's what's happening in your shop.</p></div><button class="primary" data-goto="pos">＋ New sale</button></div>
