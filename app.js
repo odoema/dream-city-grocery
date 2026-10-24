@@ -87,10 +87,11 @@
     const target = $(view + '-view');
     if (target) target.classList.remove('hidden');
     document.querySelectorAll('.nav').forEach(el => el.classList.toggle('active', el.dataset.view === view));
-    const titles = { dashboard: 'Owner dashboard', pos: 'Point of Sale', inventory: 'Inventory management', stocktake: 'Stock Taking & Reconciliation', purchases: 'Purchases', accounting: 'Accounting', reports: 'Reports & analytics' };
+    const titles = { dashboard: 'Owner dashboard', pos: 'Point of Sale', inventory: 'Inventory management', customers: 'Customer management', stocktake: 'Stock Taking & Reconciliation', purchases: 'Purchases', accounting: 'Accounting', reports: 'Reports & analytics' };
     $('page-title').textContent = titles[view] || 'Dream City Grocery';
     if (view === 'pos') renderProducts();
     if (view === 'inventory') renderInventory();
+    if (view === 'customers') renderCustomers();
     if (view === 'stocktake') loadStocktakeData().catch(error => toast('Stock-taking could not load: ' + error.message));
     if (view === 'purchases') loadPurchaseData().catch(error => toast('Purchases could not load: ' + error.message));
     if (view === 'accounting') loadAccountingData().catch(error => toast('Accounting could not load: ' + error.message));
@@ -172,8 +173,20 @@
     $('inventory-table').innerHTML = products.filter(p => (p.name + ' ' + p.sku + ' ' + productCategory(p)).toLowerCase().includes(q)).map(p =>
       '<tr><td>' + escapeHtml(p.sku) + '</td><td><b>' + escapeHtml(p.name) + '</b></td><td>' + escapeHtml(productCategory(p)) + '</td>' +
       '<td>' + fmt(p.buying_price) + '</td><td><b>' + fmt(p.selling_price) + '</b></td><td>' + stockOf(p) + '</td><td>' + Number(p.reorder_level || 0) + '</td>' +
-      '<td><span class="' + (stockOf(p) <= Number(p.reorder_level || 0) ? 'low-stock' : 'in-stock') + '">' + (p.active ? (stockOf(p) <= Number(p.reorder_level || 0) ? 'Low stock' : 'In stock') : 'Inactive') + '</span></td></tr>'
-    ).join('') || '<tr><td colspan="8">No products found.</td></tr>';
+      '<td><span class="' + (stockOf(p) <= Number(p.reorder_level || 0) ? 'low-stock' : 'in-stock') + '">' + (p.active ? (stockOf(p) <= Number(p.reorder_level || 0) ? 'Low stock' : 'In stock') : 'Inactive') + '</span></td><td>' + (['owner','manager'].includes(profile?.role) ? '<button class="text-button" type="button" data-edit-product="' + p.id + '">Edit</button> ' + (p.active ? '<button class="text-button" type="button" data-deactivate-product="' + p.id + '">Deactivate</button>' : '<button class="text-button" type="button" data-reactivate-product="' + p.id + '">Reactivate</button>') : 'View only') + '</td></tr>'
+    ).join('') || '<tr><td colspan="9">No products found.</td></tr>';
+    document.querySelectorAll('[data-edit-product]').forEach(b => b.addEventListener('click', () => editProduct(b.dataset.editProduct)));
+    document.querySelectorAll('[data-deactivate-product]').forEach(b => b.addEventListener('click', () => setProductActive(b.dataset.deactivateProduct, false)));
+    document.querySelectorAll('[data-reactivate-product]').forEach(b => b.addEventListener('click', () => setProductActive(b.dataset.reactivateProduct, true)));
+  }
+
+  function renderCustomers() {
+    if (!profile || !$('customers-table')) return;
+    const canEdit = ['owner','manager'].includes(profile.role);
+    $('customers-table').innerHTML = customers.map(c => '<tr><td><b>' + escapeHtml(c.name) + '</b></td><td>' + escapeHtml(c.phone || '—') + '</td><td>' + fmt(c.credit_limit) + '</td><td>' + (c.active ? 'Active' : 'Inactive') + '</td><td>' + (canEdit ? '<button class="text-button" type="button" data-edit-customer="' + c.id + '">Edit</button> ' + (c.active ? '<button class="text-button" type="button" data-deactivate-customer="' + c.id + '">Deactivate</button>' : '<button class="text-button" type="button" data-reactivate-customer="' + c.id + '">Reactivate</button>') : 'View only') + '</td></tr>').join('') || '<tr><td colspan="5">No customers found.</td></tr>';
+    document.querySelectorAll('[data-edit-customer]').forEach(b => b.addEventListener('click', () => editCustomer(b.dataset.editCustomer)));
+    document.querySelectorAll('[data-deactivate-customer]').forEach(b => b.addEventListener('click', () => setCustomerActive(b.dataset.deactivateCustomer, false)));
+    document.querySelectorAll('[data-reactivate-customer]').forEach(b => b.addEventListener('click', () => setCustomerActive(b.dataset.reactivateCustomer, true)));
   }
 
   function renderAlerts() {
@@ -203,7 +216,7 @@
     const [productResult, categoryResult, customerResult, saleResult, todaySalesResult] = await Promise.all([
       client.from('products').select('*, categories(name)').order('name'),
       client.from('categories').select('id,name').eq('active', true).order('name'),
-      client.from('customers').select('id,name,phone,credit_limit').eq('active', true).order('name'),
+      client.from('customers').select('id,name,phone,credit_limit,active').order('name'),
       client.from('sales').select('id,receipt_number,cashier_id,payment_method,total,status,created_at,profiles(full_name)').order('created_at', { ascending: false }).limit(30),
       client.from('sales').select('total,created_at').eq('status', 'completed').gte('created_at', dayStart.toISOString()).lt('created_at', dayEnd.toISOString())
     ]);
@@ -222,6 +235,7 @@
     renderSales('recent-sales');
     renderSales('report-sales');
     renderCustomerSelect();
+    renderCustomers();
     const dashboardMetrics = document.querySelectorAll('#dashboard-view .metric strong');
     if (dashboardMetrics.length >= 4) {
       const todays = todaySalesResult.data || [];
@@ -372,7 +386,7 @@
       return;
     }
     const [supplierRes, orderRes, invoiceRes] = await Promise.all([
-      client.from('suppliers').select('id,name,phone,email,active').order('name'),
+      client.from('suppliers').select('id,name,phone,email,address,active').order('name'),
       client.from('purchase_orders').select('id,order_number,supplier_id,status,order_date,expected_date,notes,suppliers(name),purchase_order_items(quantity_ordered,unit_cost,quantity_received,products(name,sku))').order('created_at',{ascending:false}).limit(50),
       client.from('supplier_invoices').select('id,supplier_id,purchase_order_id,invoice_number,invoice_date,due_date,total,amount_paid,status,created_at,suppliers(name),goods_receipts(receipt_number)').order('created_at',{ascending:false}).limit(50)
     ]);
@@ -385,7 +399,10 @@
 
   function renderPurchases() {
     const activeSuppliers = suppliers.filter(s => s.active);
-    $('purchase-suppliers').innerHTML = activeSuppliers.map(s => '<tr><td><b>'+escapeHtml(s.name)+'</b></td><td>'+escapeHtml(s.phone||'—')+'</td><td>'+escapeHtml(s.email||'—')+'</td><td><span class="status">Active</span></td></tr>').join('') || '<tr><td colspan="4">No suppliers yet. Add your first supplier.</td></tr>';
+    $('purchase-suppliers').innerHTML = suppliers.map(s => '<tr><td><b>'+escapeHtml(s.name)+'</b></td><td>'+escapeHtml(s.phone||'—')+'</td><td>'+escapeHtml(s.email||'—')+'</td><td><span class="status">'+(s.active?'Active':'Inactive')+'</span></td><td>' + (['owner','manager'].includes(profile?.role) ? '<button class="text-button" type="button" data-edit-supplier="'+s.id+'">Edit</button> ' + (s.active ? '<button class="text-button" type="button" data-deactivate-supplier="'+s.id+'">Deactivate</button>' : '<button class="text-button" type="button" data-reactivate-supplier="'+s.id+'">Reactivate</button>') : 'View only') + '</td></tr>').join('') || '<tr><td colspan="5">No suppliers yet. Add your first supplier.</td></tr>';
+    document.querySelectorAll('[data-edit-supplier]').forEach(b=>b.addEventListener('click',()=>editSupplier(b.dataset.editSupplier)));
+    document.querySelectorAll('[data-deactivate-supplier]').forEach(b=>b.addEventListener('click',()=>setSupplierActive(b.dataset.deactivateSupplier,false)));
+    document.querySelectorAll('[data-reactivate-supplier]').forEach(b=>b.addEventListener('click',()=>setSupplierActive(b.dataset.reactivateSupplier,true)));
     $('purchase-orders').innerHTML = purchaseOrders.map(o => '<tr><td class="receipt-id">'+escapeHtml(o.order_number)+'</td><td>'+escapeHtml(o.suppliers?.name||'')+'</td><td>'+escapeHtml(o.order_date||'')+'</td><td>'+escapeHtml(o.expected_date||'—')+'</td><td>'+escapeHtml(o.status)+'</td><td>'+o.purchase_order_items.map(i=>escapeHtml(i.products?.name||i.products?.sku||'')+' × '+Number(i.quantity_ordered)).join('<br>')+'</td></tr>').join('') || '<tr><td colspan="6">No purchase orders recorded.</td></tr>';
     $('supplier-invoices').innerHTML = supplierInvoices.map(i => '<tr><td class="receipt-id">'+escapeHtml(i.invoice_number)+'</td><td>'+escapeHtml(i.suppliers?.name||'')+'</td><td>'+escapeHtml(i.invoice_date||'')+'</td><td>'+escapeHtml(i.due_date||'—')+'</td><td><b>'+fmt(i.total)+'</b></td><td>'+fmt(i.amount_paid)+'</td><td><b>'+fmt(Number(i.total)-Number(i.amount_paid))+'</b></td><td>'+escapeHtml(i.status)+'</td><td>'+(!['paid'].includes(i.status)?'<button class="text-button" type="button" data-pay-invoice="'+i.id+'">Record payment</button>':'Paid')+'</td></tr>').join('') || '<tr><td colspan="9">No supplier invoices recorded.</td></tr>';
     document.querySelectorAll('[data-pay-invoice]').forEach(b=>b.addEventListener('click',()=>paySupplierInvoice(b.dataset.payInvoice)));
@@ -436,6 +453,28 @@
     if(result.error)return toast('Supplier not saved: '+result.error.message);
     toast('Supplier saved.');
     await loadPurchaseData();
+  }
+
+  async function editSupplier(id) {
+    if (!profile || !['owner','manager'].includes(profile.role)) return toast('Only an owner or manager can edit suppliers.');
+    const s = suppliers.find(x => x.id === id); if (!s) return;
+    const name = prompt('Supplier / company name:', s.name); if (name === null) return;
+    if (!name.trim()) return toast('Supplier name is required.');
+    const phone = prompt('Phone (optional):', s.phone || ''); if (phone === null) return;
+    const email = prompt('Email (optional):', s.email || ''); if (email === null) return;
+    const address = prompt('Address (optional):', s.address || ''); if (address === null) return;
+    const r = await client.from('suppliers').update({name:name.trim(),phone:phone.trim()||null,email:email.trim()||null,address:address.trim()||null}).eq('id',id);
+    if (r.error) return toast('Supplier update failed: ' + r.error.message);
+    toast('Supplier updated.'); await loadPurchaseData();
+  }
+
+  async function setSupplierActive(id, active) {
+    if (!profile || !['owner','manager'].includes(profile.role)) return toast('Only an owner or manager can change supplier status.');
+    const s = suppliers.find(x=>x.id===id); if(!s)return;
+    if (!confirm((active?'Reactivate':'Deactivate')+' supplier "'+s.name+'"? Existing invoices and purchase history will be preserved.')) return;
+    const r=await client.from('suppliers').update({active}).eq('id',id);
+    if(r.error)return toast('Supplier status not changed: '+r.error.message);
+    toast(active?'Supplier reactivated.':'Supplier deactivated.'); await loadPurchaseData();
   }
 
   async function createPurchaseOrder() {
@@ -563,6 +602,27 @@
     ).join('');
   }
 
+  async function editCustomer(id) {
+    if (!profile || !['owner','manager'].includes(profile.role)) return toast('Only an owner or manager can edit customers.');
+    const c=customers.find(x=>x.id===id); if(!c)return;
+    const name=prompt('Customer name:',c.name); if(name===null)return; if(!name.trim())return toast('Customer name is required.');
+    const phone=prompt('Customer phone (optional):',c.phone||''); if(phone===null)return;
+    const limitRaw=prompt('Credit limit in UGX:',String(c.credit_limit||0)); if(limitRaw===null)return;
+    const credit_limit=Number(limitRaw); if(!Number.isFinite(credit_limit)||credit_limit<0)return toast('Enter a valid non-negative credit limit.');
+    const r=await client.from('customers').update({name:name.trim(),phone:phone.trim()||null,credit_limit}).eq('id',id);
+    if(r.error)return toast('Customer update failed: '+r.error.message);
+    toast('Customer updated.'); await loadData();
+  }
+
+  async function setCustomerActive(id, active) {
+    if (!profile || !['owner','manager'].includes(profile.role)) return toast('Only an owner or manager can change customer status.');
+    const c=customers.find(x=>x.id===id); if(!c)return;
+    if(!confirm((active?'Reactivate':'Deactivate')+' customer "'+c.name+'"? Past sales will be preserved.'))return;
+    const r=await client.from('customers').update({active}).eq('id',id);
+    if(r.error)return toast('Customer status not changed: '+r.error.message);
+    toast(active?'Customer reactivated.':'Customer deactivated.'); await loadData();
+  }
+
   async function addCustomer() {
     if (!profile || !['owner', 'manager'].includes(profile.role)) return toast('Only an owner or manager can add customers.');
     const name = prompt('Customer name:');
@@ -583,6 +643,37 @@
     renderCustomerSelect();
     $('customer-select').value = result.data.id;
     toast('Customer saved. Credit sales are subject to the configured limit.');
+  }
+
+  async function editProduct(id) {
+    if (!profile || !['owner','manager'].includes(profile.role)) return toast('Only an owner or manager can edit products.');
+    const p=products.find(x=>x.id===id); if(!p)return;
+    const name=prompt('Product name:',p.name); if(name===null)return; if(!name.trim())return toast('Product name is required.');
+    const sku=prompt('Unique SKU / product code:',p.sku); if(sku===null)return; if(!sku.trim())return toast('SKU is required.');
+    const buyingRaw=prompt('Buying cost in UGX:',String(p.buying_price||0)); if(buyingRaw===null)return;
+    const sellingRaw=prompt('Selling price in UGX:',String(p.selling_price||0)); if(sellingRaw===null)return;
+    const reorderRaw=prompt('Reorder level:',String(p.reorder_level||0)); if(reorderRaw===null)return;
+    const buying=Number(buyingRaw), selling=Number(sellingRaw), reorder=Number(reorderRaw);
+    if (![buying,selling,reorder].every(Number.isFinite)||buying<0||selling<0||reorder<0)return toast('Enter valid non-negative numeric values.');
+    const categoryName=prompt('Category name (leave blank for uncategorised):',p.categories?.name||''); if(categoryName===null)return;
+    let category_id=null;
+    if(categoryName.trim()){
+      let category=categories.find(c=>c.name.toLowerCase()===categoryName.trim().toLowerCase());
+      if(!category){const cr=await client.from('categories').insert({name:categoryName.trim()}).select('id,name').single();if(cr.error)return toast('Category could not be created: '+cr.error.message);category=cr.data;categories.push(category);}
+      category_id=category.id;
+    }
+    const r=await client.from('products').update({name:name.trim(),sku:sku.trim(),buying_price:buying,selling_price:selling,reorder_level:reorder,category_id}).eq('id',id);
+    if(r.error)return toast('Product update failed: '+r.error.message);
+    toast('Product updated. Stock quantity was not changed; use Purchases or Stock Taking to adjust stock.'); await loadData();
+  }
+
+  async function setProductActive(id, active) {
+    if (!profile || !['owner','manager'].includes(profile.role)) return toast('Only an owner or manager can change product status.');
+    const p=products.find(x=>x.id===id); if(!p)return;
+    if(!confirm((active?'Reactivate':'Deactivate')+' product "'+p.name+'"? Transaction history will be preserved.'))return;
+    const r=await client.from('products').update({active}).eq('id',id);
+    if(r.error)return toast('Product status not changed: '+r.error.message);
+    toast(active?'Product reactivated.':'Product deactivated.'); await loadData();
   }
 
   async function addProduct() {
@@ -772,6 +863,7 @@
   $('checkout').addEventListener('click', checkout);
   $('add-product').addEventListener('click', addProduct);
   $('add-customer').addEventListener('click', addCustomer);
+  $('manage-add-customer').addEventListener('click', addCustomer);
   $('print-last-receipt').addEventListener('click', () => printReceipt(lastReceipt));
   $('toggle-password').addEventListener('click', () => {
     const field = $('login-password'), show = field.type === 'password';
