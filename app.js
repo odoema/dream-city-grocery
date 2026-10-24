@@ -865,13 +865,26 @@ Available SKUs:
     setMessage('Setup required: configure supabase-config.js and apply the database migration.', true);
     setSignedIn(false);
   } else {
-    client.auth.getSession().then(({ data, error }) => {
-      if (error) setMessage(error.message, true);
-      return onSession(data?.session || null);
-    });
-    client.auth.onAuthStateChange((_event, session) => {
+    // Subscribe before reading the stored session so sign-in events cannot be
+    // missed during initialization. Ignore duplicate initial-session callbacks;
+    // the explicit getSession result is authoritative for initial page load.
+    let initialized = false;
+    client.auth.onAuthStateChange((event, session) => {
+      if (event === 'INITIAL_SESSION') return;
       // Avoid awaiting network work inside Supabase's auth event callback.
       setTimeout(() => onSession(session), 0);
+    });
+    client.auth.getSession().then(({ data, error }) => {
+      initialized = true;
+      if (error) {
+        setConnectionStatus('Connection issue', 'Could not restore sign-in session', 'error');
+        setMessage('Could not restore your sign-in session. Refresh the page and try again.', true);
+        return;
+      }
+      if (initialized) onSession(data?.session || null);
+    }).catch(() => {
+      setConnectionStatus('Connection issue', 'Could not restore sign-in session', 'error');
+      setMessage('Could not contact the sign-in service. Check your connection and refresh the page.', true);
     });
   }
 })();
