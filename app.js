@@ -261,6 +261,9 @@
     document.querySelectorAll('[data-pay-invoice]').forEach(b=>b.addEventListener('click',()=>paySupplierInvoice(b.dataset.payInvoice)));
     const payable = supplierInvoices.reduce((sum,i)=>sum+Number(i.total)-Number(i.amount_paid),0);
     $('ap-total').textContent = fmt(payable);
+    $('po-count').textContent = String(purchaseOrders.filter(o=>['ordered','part_received'].includes(o.status)).length);
+    $('invoice-count').textContent = String(supplierInvoices.length);
+    $('receipt-count').textContent = String(supplierInvoices.filter(i=>i.goods_receipts).length);
     $('purchases-notice').innerHTML = '<b>Live purchasing</b><span>Purchase orders, goods receipts, supplier invoices, inventory and accounts payable post to the dedicated Supabase database. Invoice receiving updates stock and journals atomically.</span>';
   }
 
@@ -293,7 +296,7 @@
   }
 
   async function addSupplier() {
-    if (!canManagePurchases()) return toast('Purchases access required.');
+    if (!profile || !['owner','manager'].includes(profile.role)) return toast('Only an owner or manager can add suppliers.');
     const name=prompt('Supplier / company name:');
     if(!name||!name.trim())return;
     const phone=prompt('Phone (optional):','');
