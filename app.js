@@ -238,7 +238,7 @@
   async function loadPurchaseData() {
     if (!client || !profile) return;
     if (!canManagePurchases()) {
-      $('purchases-content').innerHTML = '<div class="notice"><b>Access restricted</b><span>Purchases are available to owners, managers and accountants.</span></div>';
+      $('purchases-view').innerHTML = '<div class="notice"><b>Access restricted</b><span>Purchases are available to owners, managers and accountants.</span></div>';
       return;
     }
     const [supplierRes, orderRes, invoiceRes] = await Promise.all([
