@@ -25,6 +25,7 @@
   let supplierInvoices = [];
   let stocktakeSession = null;
   let stocktakeItems = [];
+  let stocktakeHistory = [];
   let cart = [];
   let lastReceipt = null;
   let pendingIdempotencyKey = null;
@@ -252,6 +253,7 @@
     if (sessionResult.error) throw sessionResult.error;
     if (historyResult.error) throw historyResult.error;
     stocktakeSession = sessionResult.data?.[0] || null;
+    stocktakeHistory = historyResult.data || [];
     stocktakeItems = [];
     if (stocktakeSession) {
       const itemsResult = await client.from('stocktake_items')
@@ -260,7 +262,7 @@
       if (itemsResult.error) throw itemsResult.error;
       stocktakeItems = itemsResult.data || [];
     }
-    renderStocktake(historyResult.data || []);
+    renderStocktake(stocktakeHistory);
   }
 
   function renderStocktake(history) {
@@ -277,6 +279,7 @@
       '<article class="metric"><span>Current session</span><strong>None</strong><small>Start a session after recording new purchases.</small></article>';
     $('start-stocktake').disabled = !!session;
     $('finalize-stocktake').disabled = !session || !stocktakeItems.length || counted !== stocktakeItems.length;
+    $('cancel-stocktake').disabled = !session;
     $('finalize-stocktake').textContent = session ? (counted === stocktakeItems.length ? 'Approve & post adjustments' : 'Count all products first') : 'Approve & post adjustments';
     const q = ($('stocktake-search').value || '').trim().toLowerCase();
     $('stocktake-items').innerHTML = session ? (stocktakeItems.filter(item => {
@@ -316,6 +319,15 @@
     const result = await client.rpc('start_stocktake',{p_notes:notes});
     if (result.error) return toast('Could not start stocktake: '+result.error.message);
     toast('Stocktake started: '+result.data.session_number+' ('+result.data.product_count+' products).');
+    await loadStocktakeData();
+  }
+
+  async function cancelStocktake() {
+    if (!stocktakeSession || !canManageStocktake()) return;
+    if (!confirm('Cancel '+stocktakeSession.session_number+'? No stock or accounting balances will be changed. You can then start a fresh session.')) return;
+    const result = await client.rpc('cancel_stocktake',{p_session_id:stocktakeSession.id});
+    if (result.error) return toast('Could not cancel session: '+result.error.message);
+    toast('Draft stocktake cancelled. No balances were changed.');
     await loadStocktakeData();
   }
 
