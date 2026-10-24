@@ -1,0 +1,61 @@
+name: Read-only Supabase production audit
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dream-city-production-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Verify target and inspect production schema
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      EXPECTED_PROJECT_REF: nohdgmylncjtdymfshfy
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify required secrets and exact project
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${SUPABASE_URL:-}" || -z "${SUPABASE_DB_URL:-}" ]]; then
+            echo "::error::Add repository Actions secrets SUPABASE_URL and SUPABASE_DB_URL before running this workflow."
+            exit 1
+          fi
+          actual_ref="$(python -c 'import os, urllib.parse; print(urllib.parse.urlparse(os.environ["SUPABASE_URL"]).hostname.split(".")[0])')"
+          if [[ "$actual_ref" != "$EXPECTED_PROJECT_REF" ]]; then
+            echo "::error::Refusing to connect: SUPABASE_URL project reference does not match the expected Dream City Grocery project."
+            exit 1
+          fi
+          echo "Target project reference verified: $actual_ref"
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Run read-only audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          psql "$SUPABASE_DB_URL" --no-psqlrc --set ON_ERROR_STOP=1 --file scripts/audit-production.sql 2>&1 | tee production-audit.txt
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dream-city-production-read-only-audit
+          path: production-audit.txt
+          if-no-files-found: ignore
+          retention-days: 14
