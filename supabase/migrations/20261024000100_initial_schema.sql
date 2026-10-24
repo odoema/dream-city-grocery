@@ -91,6 +91,10 @@ create table public.accounts (
   created_at timestamptz not null default now()
 );
 
+insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
+values ('product-images','product-images',false,5242880,array['image/jpeg','image/png','image/webp'])
+on conflict(id) do nothing;
+
 create table public.sales (
   id uuid primary key default gen_random_uuid(),
   receipt_number text not null unique,
@@ -163,6 +167,25 @@ create table public.audit_log (
   details jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
+
+create or replace function public.record_product_opening_stock()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $
+begin
+  if new.quantity_on_hand > 0 then
+    insert into public.inventory_movements(product_id,movement_type,quantity_delta,unit_cost,reference_type,reference_id,note,created_by)
+    values(new.id,'opening',new.quantity_on_hand,new.buying_price,'product',new.id,'Opening stock on product creation',auth.uid());
+  end if;
+  return new;
+end;
+$;
+
+create trigger products_opening_stock_movement
+  after insert on public.products
+  for each row execute function public.record_product_opening_stock();
 
 create index products_name_idx on public.products using gin (to_tsvector('simple', name));
 create index products_active_idx on public.products(active);
@@ -249,6 +272,11 @@ create policy "authorized staff read inventory movements" on public.inventory_mo
 create policy "authorized staff read journals" on public.journals for select to authenticated using (public.current_staff_role() in ('owner','manager','accountant'));
 create policy "authorized staff read journal lines" on public.journal_lines for select to authenticated using (public.current_staff_role() in ('owner','manager','accountant'));
 create policy "managers read audit log" on public.audit_log for select to authenticated using (public.current_staff_role() in ('owner','manager','accountant'));
+
+create policy "active staff read product images" on storage.objects for select to authenticated using (bucket_id = 'product-images' and public.is_active_staff());
+create policy "managers upload product images" on storage.objects for insert to authenticated with check (bucket_id = 'product-images' and public.can_manage_products());
+create policy "managers update product images" on storage.objects for update to authenticated using (bucket_id = 'product-images' and public.can_manage_products()) with check (bucket_id = 'product-images' and public.can_manage_products());
+create policy "managers delete product images" on storage.objects for delete to authenticated using (bucket_id = 'product-images' and public.can_manage_products());
 
 -- No direct authenticated writes to sales, stock movements, journals, journal lines or audit log.
 -- Those records are written only by the atomic SECURITY DEFINER checkout function.
@@ -342,6 +370,18 @@ begin
   if v_discount > v_subtotal then raise exception 'Discount cannot exceed the sale subtotal'; end if;
   v_total := round(v_subtotal - v_discount,2);
   if v_total < 0 then raise exception 'Sale total cannot be negative'; end if;
+
+  if p_payment_method = 'credit' then
+    if not exists(select 1 from public.customers c where c.id=p_customer_id and c.active) then
+      raise exception 'Customer is inactive or not found';
+    end if;
+    if (
+      select coalesce(sum(s.total),0) from public.sales s
+      where s.customer_id=p_customer_id and s.payment_method='credit' and s.status='completed'
+    ) + v_total > (select c.credit_limit from public.customers c where c.id=p_customer_id) then
+      raise exception 'Credit sale exceeds the customer credit limit';
+    end if;
+  end if;
 
   v_account_code := case p_payment_method
     when 'cash' then '1000'
