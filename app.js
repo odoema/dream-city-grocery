@@ -311,7 +311,11 @@
       renderCart();
       $('print-last-receipt').classList.remove('hidden');
       toast('Sale saved: ' + sale.receipt_number + ' · ' + fmt(sale.total));
-      await loadData();
+      try {
+        await loadData();
+      } catch (refreshError) {
+        toast('Sale was saved, but the screen could not refresh: ' + (refreshError.message || 'refresh error'));
+      }
       printReceipt(lastReceipt);
     } catch (error) {
       toast('Sale was not confirmed: ' + (error.message || 'Please retry. Keep the cart and try again.'));
