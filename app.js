@@ -391,8 +391,35 @@
     const subs=document.querySelectorAll('#accounting-view .metric small');
     if(subs.length>=4){subs[0].textContent='Posted journals · UGX';subs[1].textContent='From completed POS sales';subs[2].textContent='Posted expense journals';subs[3].textContent='Revenue less COGS and expenses';}
     $('ap-total-accounting').textContent=fmt(ap);
+    const normalDebit = a => ['asset','expense','contra_revenue'].includes(a.type);
+    let totalDebit=0,totalCredit=0;
+    $('trial-balance').innerHTML=accountsRes.data.map(a=>{
+      const netBalance=totals[a.code]||0;
+      const debit=normalDebit(a)?Math.max(netBalance,0):Math.max(-netBalance,0);
+      const credit=normalDebit(a)?Math.max(-netBalance,0):Math.max(netBalance,0);
+      totalDebit+=debit;totalCredit+=credit;
+      return '<tr><td>'+escapeHtml(a.code)+'</td><td>'+escapeHtml(a.name)+'</td><td>'+escapeHtml(a.type.replaceAll('_',' '))+'</td><td>'+fmt(debit)+'</td><td>'+fmt(credit)+'</td></tr>';
+    }).join('')||'<tr><td colspan="5">No active accounts.</td></tr>';
+    $('trial-debit').textContent=fmt(totalDebit);$('trial-credit').textContent=fmt(totalCredit);
+    const assetAccounts=accountsRes.data.filter(a=>a.type==='asset');
+    const liabilityAccounts=accountsRes.data.filter(a=>a.type==='liability');
+    const equityAccounts=accountsRes.data.filter(a=>a.type==='equity');
+    const assetTotal=assetAccounts.reduce((sum,a)=>sum+(totals[a.code]||0),0);
+    const liabilityTotal=liabilityAccounts.reduce((sum,a)=>sum-(totals[a.code]||0),0);
+    const equityTotal=equityAccounts.reduce((sum,a)=>sum-(totals[a.code]||0),0)+net;
+    const bsRows=[
+      ...assetAccounts.map(a=>({section:'Assets',name:a.code+' · '+a.name,value:totals[a.code]||0})),
+      ...liabilityAccounts.map(a=>({section:'Liabilities',name:a.code+' · '+a.name,value:-(totals[a.code]||0)})),
+      ...equityAccounts.map(a=>({section:'Equity',name:a.code+' · '+a.name,value:-(totals[a.code]||0)})),
+      {section:'Equity',name:'Current-period net profit (estimated)',value:net},
+      {section:'Total',name:'Total assets',value:assetTotal},
+      {section:'Total',name:'Liabilities + equity',value:liabilityTotal+equityTotal}
+    ];
+    $('balance-sheet').innerHTML=bsRows.map(r=>'<tr><td>'+escapeHtml(r.section)+'</td><td>'+escapeHtml(r.name)+'</td><td><b>'+fmt(r.value)+'</b></td></tr>').join('');
+    const cashMovement=accountsRes.data.filter(a=>['1000','1010','1020'].includes(a.code)).reduce((sum,a)=>sum+(totals[a.code]||0),0);
+    $('cash-movement').textContent=fmt(cashMovement);
     $('journal-register').innerHTML=journalRes.data.map(j=>'<tr><td>'+escapeHtml(new Date(j.journal_date).toLocaleString('en-GB'))+'</td><td>'+escapeHtml(j.source_type)+'</td><td>'+escapeHtml(j.memo)+'</td></tr>').join('')||'<tr><td colspan="3">No posted journals.</td></tr>';
-    $('accounting-notice').innerHTML='<b>Live accounting</b><span>Figures are derived from posted database journals and completed sales. Operating expenses can be added in the next accounting iteration.</span>';
+    $('accounting-notice').innerHTML='<b>Live accounting</b><span>Trial balance and balance sheet snapshot are derived from posted journal lines. Profit and cash movement are cumulative since opening; import opening balances before relying on these as formal statements.</span>';
   }
 
   function renderCustomerSelect() {
