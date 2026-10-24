@@ -207,7 +207,7 @@
       const descriptions = document.querySelectorAll('#dashboard-view .metric small');
       if (descriptions.length >= 4) {
         descriptions[0].textContent = 'Recorded sales today (latest 30 loaded)';
-        descriptions[1].textContent = 'Accounting report not yet implemented';
+        descriptions[1].textContent = 'See Accounting for posted journal totals';
         descriptions[2].textContent = 'Latest 30 sales loaded';
         descriptions[3].textContent = 'Based on live stock';
       }
@@ -224,7 +224,7 @@
     if (recentSubtitle) recentSubtitle.textContent = 'Latest recorded transactions from the database';
     const dashboardNotice = document.querySelector('#dashboard-view .notice');
     if (dashboardNotice) {
-      dashboardNotice.innerHTML = '<b>Live data</b><span>Products and recent sales are loaded from Dream City Supabase. Financial statements and purchases are not yet implemented.</span>';
+      dashboardNotice.innerHTML = '<b>Live data</b><span>Products and recent sales are live. Purchasing and accounts payable are available after applying the purchasing migration; Balance Sheet and Cash Flow reports remain pending.</span>';
     }
     const reportNotice = document.querySelector('#reports-view .notice');
     if (reportNotice) reportNotice.innerHTML = '<b>Live sales</b><span>Showing the latest 30 database sales available to your staff role.</span>';
@@ -383,8 +383,9 @@
     const totals={};
     for(const line of lineRes.data){const a=accountById[line.account_id];if(!a)continue;totals[a.code]=(totals[a.code]||0)+Number(line.debit)-Number(line.credit);}
     const grossRevenue=Object.entries(totals).filter(([code])=>code==='4000').reduce((s,[,v])=>s-v,0);
+    const discounts=Object.entries(totals).filter(([code])=>code==='4900').reduce((s,[,v])=>s+v,0);
     const expense=Object.entries(totals).filter(([code])=>code.startsWith('6')).reduce((s,[,v])=>s+v,0);
-    const net=grossRevenue-cogs-expense;
+    const net=grossRevenue-discounts-cogs-expense;
     const metrics=document.querySelectorAll('#accounting-view .metric strong');
     if(metrics.length>=4){metrics[0].textContent=fmt(grossRevenue);metrics[1].textContent=fmt(cogs);metrics[2].textContent=fmt(expense);metrics[3].textContent=fmt(net);}
     const subs=document.querySelectorAll('#accounting-view .metric small');
