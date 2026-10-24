@@ -19,7 +19,7 @@ create table public.profiles (
   updated_at timestamptz not null default now()
 );
 
-create or replace function public.handle_new_user()
+create or replace function public.dream_city_handle_new_user()
 returns trigger
 language plpgsql
 security definer
@@ -33,9 +33,9 @@ begin
 end;
 $;
 
-create trigger on_auth_user_created
+create trigger dream_city_on_auth_user_created
   after insert on auth.users
-  for each row execute function public.handle_new_user();
+  for each row execute function public.dream_city_handle_new_user();
 
 create table public.categories (
   id uuid primary key default gen_random_uuid(),
