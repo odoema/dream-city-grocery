@@ -20,6 +20,9 @@
   let categories = [];
   let customers = [];
   let sales = [];
+  let suppliers = [];
+  let purchaseOrders = [];
+  let supplierInvoices = [];
   let cart = [];
   let lastReceipt = null;
   let pendingIdempotencyKey = null;
@@ -69,6 +72,8 @@
     $('page-title').textContent = titles[view] || 'Dream City Grocery';
     if (view === 'pos') renderProducts();
     if (view === 'inventory') renderInventory();
+    if (view === 'purchases') loadPurchaseData().catch(error => toast('Purchases could not load: ' + error.message));
+    if (view === 'accounting') loadAccountingData().catch(error => toast('Accounting could not load: ' + error.message));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -225,6 +230,165 @@
     if (reportNotice) reportNotice.innerHTML = '<b>Live sales</b><span>Showing the latest 30 database sales available to your staff role.</span>';
     const footer = document.querySelector('footer .footer-demo');
     if (footer) footer.textContent = 'Connected · Live database';
+  }
+
+
+  function canManagePurchases() { return profile && ['owner','manager','accountant'].includes(profile.role); }
+
+  async function loadPurchaseData() {
+    if (!client || !profile) return;
+    if (!canManagePurchases()) {
+      $('purchases-content').innerHTML = '<div class="notice"><b>Access restricted</b><span>Purchases are available to owners, managers and accountants.</span></div>';
+      return;
+    }
+    const [supplierRes, orderRes, invoiceRes] = await Promise.all([
+      client.from('suppliers').select('id,name,phone,email,active').order('name'),
+      client.from('purchase_orders').select('id,order_number,supplier_id,status,order_date,expected_date,notes,suppliers(name),purchase_order_items(quantity_ordered,unit_cost,quantity_received,products(name,sku))').order('created_at',{ascending:false}).limit(50),
+      client.from('supplier_invoices').select('id,supplier_id,purchase_order_id,invoice_number,invoice_date,due_date,total,amount_paid,status,created_at,suppliers(name),goods_receipts(receipt_number)').order('created_at',{ascending:false}).limit(50)
+    ]);
+    for (const res of [supplierRes,orderRes,invoiceRes]) if (res.error) throw res.error;
+    suppliers = supplierRes.data || [];
+    purchaseOrders = orderRes.data || [];
+    supplierInvoices = invoiceRes.data || [];
+    renderPurchases();
+  }
+
+  function renderPurchases() {
+    const activeSuppliers = suppliers.filter(s => s.active);
+    $('purchase-suppliers').innerHTML = activeSuppliers.map(s => '<tr><td><b>'+escapeHtml(s.name)+'</b></td><td>'+escapeHtml(s.phone||'—')+'</td><td>'+escapeHtml(s.email||'—')+'</td><td><span class="status">Active</span></td></tr>').join('') || '<tr><td colspan="4">No suppliers yet. Add your first supplier.</td></tr>';
+    $('purchase-orders').innerHTML = purchaseOrders.map(o => '<tr><td class="receipt-id">'+escapeHtml(o.order_number)+'</td><td>'+escapeHtml(o.suppliers?.name||'')+'</td><td>'+escapeHtml(o.order_date||'')+'</td><td>'+escapeHtml(o.expected_date||'—')+'</td><td>'+escapeHtml(o.status)+'</td><td>'+o.purchase_order_items.map(i=>escapeHtml(i.products?.name||i.products?.sku||'')+' × '+Number(i.quantity_ordered)).join('<br>')+'</td></tr>').join('') || '<tr><td colspan="6">No purchase orders recorded.</td></tr>';
+    $('supplier-invoices').innerHTML = supplierInvoices.map(i => '<tr><td class="receipt-id">'+escapeHtml(i.invoice_number)+'</td><td>'+escapeHtml(i.suppliers?.name||'')+'</td><td>'+escapeHtml(i.invoice_date||'')+'</td><td>'+escapeHtml(i.due_date||'—')+'</td><td><b>'+fmt(i.total)+'</b></td><td>'+fmt(i.amount_paid)+'</td><td><b>'+fmt(Number(i.total)-Number(i.amount_paid))+'</b></td><td>'+escapeHtml(i.status)+'</td><td>'+(!['paid'].includes(i.status)?'<button class="text-button" type="button" data-pay-invoice="'+i.id+'">Record payment</button>':'Paid')+'</td></tr>').join('') || '<tr><td colspan="9">No supplier invoices recorded.</td></tr>';
+    document.querySelectorAll('[data-pay-invoice]').forEach(b=>b.addEventListener('click',()=>paySupplierInvoice(b.dataset.payInvoice)));
+    const payable = supplierInvoices.reduce((sum,i)=>sum+Number(i.total)-Number(i.amount_paid),0);
+    $('ap-total').textContent = fmt(payable);
+    $('purchases-notice').innerHTML = '<b>Live purchasing</b><span>Purchase orders, goods receipts, supplier invoices, inventory and accounts payable post to the dedicated Supabase database. Invoice receiving updates stock and journals atomically.</span>';
+  }
+
+  function chooseSupplier() {
+    const active = suppliers.filter(s=>s.active);
+    if (!active.length) { toast('Add a supplier first.'); return null; }
+    const answer = prompt('Choose supplier by number:\n'+active.map((s,i)=>(i+1)+'. '+s.name+(s.phone?' · '+s.phone:'')).join('\n'));
+    if (answer===null) return null;
+    const n=Number(answer);
+    if (!Number.isInteger(n)||n<1||n>active.length) { toast('Invalid supplier selection.'); return null; }
+    return active[n-1];
+  }
+
+  function promptPurchaseItems(title) {
+    const activeProducts = products.filter(p=>p.active);
+    if (!activeProducts.length) { toast('Add products to inventory first.'); return null; }
+    const raw = prompt(title+'\nEnter each line as SKU:quantity:unit_cost, separated by semicolons.\nAvailable SKUs:\n'+activeProducts.map(p=>p.sku+' — '+p.name).join('\n'));
+    if (raw===null) return null;
+    const items=[];
+    for (const part of raw.split(';')) {
+      const bits=part.trim().split(':');
+      if (bits.length!==3) { toast('Use SKU:quantity:unit_cost for each line.'); return null; }
+      const product=activeProducts.find(p=>p.sku.toLowerCase()===bits[0].trim().toLowerCase());
+      const quantity=Number(bits[1]), unit_cost=Number(bits[2]);
+      if (!product||!Number.isFinite(quantity)||quantity<=0||!Number.isFinite(unit_cost)||unit_cost<0) { toast('Check SKU, positive quantity and non-negative cost.'); return null; }
+      if(items.some(i=>i.product_id===product.id)){toast('Each SKU should appear only once.');return null;}
+      items.push({product_id:product.id,quantity,unit_cost});
+    }
+    return items.length?items:null;
+  }
+
+  async function addSupplier() {
+    if (!canManagePurchases()) return toast('Purchases access required.');
+    const name=prompt('Supplier / company name:');
+    if(!name||!name.trim())return;
+    const phone=prompt('Phone (optional):','');
+    const email=prompt('Email (optional):','');
+    const address=prompt('Address (optional):','');
+    const result=await client.from('suppliers').insert({name:name.trim(),phone:phone?.trim()||null,email:email?.trim()||null,address:address?.trim()||null,active:true}).select('id').single();
+    if(result.error)return toast('Supplier not saved: '+result.error.message);
+    toast('Supplier saved.');
+    await loadPurchaseData();
+  }
+
+  async function createPurchaseOrder() {
+    if(!canManagePurchases())return toast('Purchases access required.');
+    const supplier=chooseSupplier(); if(!supplier)return;
+    const items=promptPurchaseItems('Create purchase order'); if(!items)return;
+    const expected=prompt('Expected delivery date (YYYY-MM-DD, optional):','');
+    if(expected===null)return;
+    const notes=prompt('Notes (optional):','')||'';
+    const result=await client.rpc('create_purchase_order',{p_supplier_id:supplier.id,p_items:items,p_expected_date:expected.trim()||null,p_notes:notes});
+    if(result.error)return toast('Purchase order failed: '+result.error.message);
+    toast('Purchase order created: '+result.data.order_number);
+    await loadPurchaseData();
+  }
+
+  async function receiveSupplierInvoice() {
+    if(!canManagePurchases())return toast('Purchases access required.');
+    const supplier=chooseSupplier(); if(!supplier)return;
+    const invoice=prompt('Supplier invoice number:'); if(!invoice||!invoice.trim())return;
+    const invoiceDate=prompt('Invoice date (YYYY-MM-DD):',new Date().toISOString().slice(0,10)); if(invoiceDate===null)return;
+    const dueDate=prompt('Payment due date (YYYY-MM-DD, optional):',''); if(dueDate===null)return;
+    const items=promptPurchaseItems('Receive goods / record supplier invoice'); if(!items)return;
+    const orderCandidates=purchaseOrders.filter(o=>o.supplier_id===supplier.id&&['ordered','part_received'].includes(o.status));
+    let orderId=null;
+    if(orderCandidates.length){
+      const use=prompt('Optional purchase order number to match (leave blank if not linked):\n'+orderCandidates.map(o=>o.order_number).join('\n'),'');
+      if(use===null)return;
+      if(use.trim()){
+        const order=orderCandidates.find(o=>o.order_number.toLowerCase()===use.trim().toLowerCase());
+        if(!order)return toast('Purchase order not found for this supplier.');
+        orderId=order.id;
+      }
+    }
+    const notes=prompt('Goods receipt notes (optional):','')||'';
+    const result=await client.rpc('receive_supplier_invoice',{p_supplier_id:supplier.id,p_invoice_number:invoice.trim(),p_invoice_date:invoiceDate.trim()||null,p_due_date:dueDate.trim()||null,p_items:items,p_purchase_order_id:orderId,p_notes:notes});
+    if(result.error)return toast('Goods receiving failed: '+result.error.message);
+    toast('Goods received '+result.data.receipt_number+' · invoice '+fmt(result.data.total));
+    await Promise.all([loadPurchaseData(),loadData()]);
+  }
+
+  async function paySupplierInvoice(id) {
+    const invoice=supplierInvoices.find(i=>i.id===id); if(!invoice)return;
+    const outstanding=Number(invoice.total)-Number(invoice.amount_paid);
+    const ref=prompt('Payment reference (bank/mobile-money transaction or cash voucher):'); if(!ref||!ref.trim())return;
+    const methodRaw=prompt('Payment method: cash, mobile_money, card or bank','bank'); if(methodRaw===null)return;
+    const method=methodRaw.trim().toLowerCase();
+    if(!['cash','mobile_money','card','bank'].includes(method))return toast('Choose cash, mobile_money, card or bank.');
+    const amountRaw=prompt('Amount to pay (outstanding '+fmt(outstanding)+'):',String(outstanding)); if(amountRaw===null)return;
+    const amount=Number(amountRaw);
+    if(!Number.isFinite(amount)||amount<=0||amount>outstanding)return toast('Payment must be positive and no greater than outstanding balance.');
+    const result=await client.rpc('pay_supplier_invoice',{p_invoice_id:id,p_payment_reference:ref.trim(),p_payment_method:method,p_amount:amount});
+    if(result.error)return toast('Payment not saved: '+result.error.message);
+    toast('Supplier payment saved. Balance: '+fmt(result.data.remaining_balance));
+    await loadPurchaseData();
+  }
+
+  async function loadAccountingData() {
+    if(!client||!profile||!['owner','manager','accountant'].includes(profile.role))return;
+    const [journalRes, invoiceRes, paymentRes] = await Promise.all([
+      client.from('journals').select('id,journal_date,source_type,source_id,memo').order('journal_date',{ascending:false}).limit(500),
+      client.from('supplier_invoices').select('total,amount_paid,status'),
+      client.from('sales').select('total,cost_of_goods,discount,status,created_at').eq('status','completed')
+    ]);
+    for(const r of [journalRes,invoiceRes,paymentRes])if(r.error)throw r.error;
+    const saleRevenue=paymentRes.data.reduce((sum,s)=>sum+Number(s.total),0);
+    const cogs=paymentRes.data.reduce((sum,s)=>sum+Number(s.cost_of_goods),0);
+    const ap=invoiceRes.data.reduce((sum,i)=>sum+Number(i.total)-Number(i.amount_paid),0);
+    const revenue=paymentRes.data.reduce((sum,s)=>sum+Number(s.total),0);
+    const [lineRes,accountsRes] = await Promise.all([
+      client.from('journal_lines').select('journal_id,account_id,debit,credit'),
+      client.from('accounts').select('id,code,name,type').eq('active',true).order('code')
+    ]);
+    if(lineRes.error)throw lineRes.error;if(accountsRes.error)throw accountsRes.error;
+    const accountById=Object.fromEntries(accountsRes.data.map(a=>[a.id,a]));
+    const totals={};
+    for(const line of lineRes.data){const a=accountById[line.account_id];if(!a)continue;totals[a.code]=(totals[a.code]||0)+Number(line.debit)-Number(line.credit);}
+    const grossRevenue=Object.entries(totals).filter(([code])=>code==='4000').reduce((s,[,v])=>s-v,0);
+    const expense=Object.entries(totals).filter(([code])=>code.startsWith('6')).reduce((s,[,v])=>s+v,0);
+    const net=grossRevenue-cogs-expense;
+    const metrics=document.querySelectorAll('#accounting-view .metric strong');
+    if(metrics.length>=4){metrics[0].textContent=fmt(grossRevenue);metrics[1].textContent=fmt(cogs);metrics[2].textContent=fmt(expense);metrics[3].textContent=fmt(net);}
+    const subs=document.querySelectorAll('#accounting-view .metric small');
+    if(subs.length>=4){subs[0].textContent='Posted journals · UGX';subs[1].textContent='From completed POS sales';subs[2].textContent='Posted expense journals';subs[3].textContent='Revenue less COGS and expenses';}
+    $('ap-total-accounting').textContent=fmt(ap);
+    $('journal-register').innerHTML=journalRes.data.map(j=>'<tr><td>'+escapeHtml(new Date(j.journal_date).toLocaleString('en-GB'))+'</td><td>'+escapeHtml(j.source_type)+'</td><td>'+escapeHtml(j.memo)+'</td></tr>').join('')||'<tr><td colspan="3">No posted journals.</td></tr>';
+    $('accounting-notice').innerHTML='<b>Live accounting</b><span>Figures are derived from posted database journals and completed sales. Operating expenses can be added in the next accounting iteration.</span>';
   }
 
   function renderCustomerSelect() {
@@ -402,6 +566,9 @@
   document.querySelectorAll('[data-goto]').forEach(button => button.addEventListener('click', () => showView(button.dataset.goto)));
   $('product-search').addEventListener('input', renderProducts);
   $('inventory-search').addEventListener('input', renderInventory);
+  $('add-supplier').addEventListener('click', addSupplier);
+  $('create-purchase-order').addEventListener('click', createPurchaseOrder);
+  $('receive-supplier-invoice').addEventListener('click', receiveSupplierInvoice);
   $('payment-method').addEventListener('change', renderCustomerSelect);
   $('clear-cart').addEventListener('click', () => { cart = []; pendingIdempotencyKey = null; renderCart(); });
   $('checkout').addEventListener('click', checkout);
