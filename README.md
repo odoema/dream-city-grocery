@@ -4,6 +4,11 @@
 >
 > Grocery Point of Sale, inventory, accounting, reporting and remote-management platform.
 
+## User documentation
+
+- **[Complete User Guide](USER_GUIDE.md)** — staff sign-in, POS sales, inventory, step-by-step stock taking and reconciliation, purchases and supplier payments, accounting, reports, roles, troubleshooting and daily checklists.
+- This README is the technical architecture and developer handoff. The user guide describes how staff should operate the interface and distinguishes live workflows from prototype/sample content.
+
 ## 1. Project purpose
 
 Dream City Grocery is being built as a complete grocery-shop management system rather than a simple cash register. The goal is to give the owner a reliable view of every sale, stock movement, expense and financial result while giving cashiers a simple POS experience.
@@ -60,17 +65,13 @@ This repository is the source of truth for the Dream City Grocery application co
           receipts        alerts         archive
 ```
 
-### Current temporary backend
+### Backend separation and current frontend configuration
 
-The development backend currently uses the `dreamcity` schema inside the SmartAttend Supabase project `gbyvlotgjrtrnogtbemi`.
+The intended and configured frontend target is the dedicated Dream City Grocery Supabase project `nohdgmylncjtdymfshfy`. The current browser app configuration must be checked against the deployed `supabase-config.js` and live Supabase project before real transactions are attempted.
 
-### Intended permanent backend
+Historical development used a `dreamcity` schema inside the SmartAttend Supabase project `gbyvlotgjrtrnogtbemi`. This is a legacy temporary arrangement, **not permission to continue making changes there**. SmartAttend's paying customers, `public` schema, authentication and production settings must remain untouched. Do not run migrations or destructive SQL against that shared project.
 
-The user-created dedicated Dream City Grocery Supabase project is:
-
-`nohdgmylncjtdymfshfy`
-
-The application should ultimately use this project exclusively for Dream City data.
+The repository's UI currently contains a demo-mode indicator and sample dashboard figures. Treat those figures as illustrative, and verify the live data connection before using the application for actual shop transactions.
 
 ## 5. Core modules
 
@@ -439,39 +440,33 @@ When the dedicated project is available:
 
 ## 20. Current status / handoff
 
-This repository is a **development prototype and project foundation**, not yet a production-ready grocery ERP.
+This repository contains a working application interface and database-backed workflow code, but it should still be treated as a **development prototype, not a certified production-ready grocery ERP**. The UI visibly labels the workspace as demo mode and the dashboard includes sample figures; verify the actual deployment/configuration and live data before using it for real transactions.
 
-Already established conceptually/in the temporary backend:
+Present in the repository UI/code (verify against the deployed database before relying on it):
 
-- Dream City Grocery project scope
-- GitHub repository
-- Supabase/PostgreSQL architecture
-- Temporary `dreamcity` schema
-- Core database entities
-- Initial chart of accounts
-- Roles
-- RLS direction
-- Atomic `complete_sale()` transaction design
-- Google Apps Script receipt/notification direction
-- Migration plan to dedicated Supabase project
+- Responsive Dream City-branded staff login, password reset and staff-profile checks
+- Dashboard, POS, inventory, stock-taking, purchases, accounting and reports screens
+- POS product search/cart and checkout RPC call
+- Product and customer creation controls for authorized roles
+- Stocktake draft, count, cancellation and approval/posting workflow using database RPCs
+- Supplier purchase orders, goods receiving/invoice recording and supplier payment workflow using database RPCs
+- Accounting summary/journal-reading code
+- Navigation adapted for desktop and mobile layouts
+- [Staff User Guide](USER_GUIDE.md)
 
 Still required before live shop use:
 
-- Connect the frontend POS to the temporary Supabase backend
-- Configure authentication and initial owner account
-- Implement live product/inventory management
-- Fully test `complete_sale()` against real product data
-- Implement purchase/receiving workflows
-- Implement returns/refunds safely
-- Implement expenses and full accounting workflows
-- Build production dashboard/report queries
-- Connect PDF receipt generation to completed sales
-- Configure Gmail/Drive automation
-- Add robust error handling and reconciliation
-- Add automated tests
-- Validate security/RLS policies
-- Migrate to the dedicated Supabase project
-- Deploy the production web/PWA application
+- Verify the deployed Supabase URL/key points only to the dedicated Dream City project
+- Confirm schema/migrations and role policies match the frontend queries and RPCs
+- Configure and verify the initial owner/staff profiles
+- Test POS, stocktaking, purchasing and accounting against isolated test data
+- Review stocktake and checkout accounting policies and reconciliation outcomes
+- Verify production-grade dashboard/report calculations and distinguish them from sample UI values
+- Implement or verify safe returns/refunds and expense workflows
+- Connect and verify PDF receipt, email and Drive automation if required
+- Add automated tests and production monitoring
+- Confirm backups and recovery procedures
+- Complete end-to-end security/RLS review before live shop use
 
 ## 21. Handoff rule
 
@@ -492,9 +487,9 @@ The most important constraints are:
 
 ## 22. Immediate next development task
 
-**Connect the existing POS UI to the temporary `dreamcity` Supabase schema and implement authenticated live checkout using `dreamcity.complete_sale()`.**
+**Verify the deployed app is connected to the dedicated Dream City Supabase project, then validate each database-backed workflow end to end using isolated test data.** Start with sign-in and active staff profiles, then test product loading, checkout, stocktake draft/count/posting, goods receiving, supplier payment and accounting reconciliation. Do not test by creating fake sales or changing real stock in a live business database.
 
-Do not add more demo-only checkout logic when the real database transaction is available. The next implementation should make the POS perform a genuine database-backed sale and then build receipt/notification automation around that confirmed transaction.
+Do not assume that a visible UI control or an RPC call proves the full workflow is production-ready. Confirm the database function, permissions, resulting records and reconciliation totals.
 
 
 ## 23. Production protection: SmartAttend.live
@@ -526,3 +521,8 @@ Do not move, delete, or retire the temporary `dreamcity` schema from the SmartAt
 At the time of this note, the installed `dreamcity.complete_sale(...)` function is under review. Its replacement is **not approved or applied by this README update**. Tax accounting treatment remains undecided, so a reviewed checkout change must reject non-zero tax until an appropriate tax liability/accounting policy is established. Card receipts are intended to post to Bank account `1020`, and discounts require owner/manager authorization.
 
 **Default decision when uncertain: stop and inspect; do not execute. SmartAttend.live stability takes precedence over Dream City development speed.**
+
+
+## 24. Staff operations guide
+
+The step-by-step guide for day-to-day use is in **[USER_GUIDE.md](USER_GUIDE.md)**. It covers staff login, dashboard interpretation, POS checkout, product/inventory management, stock taking (including recording supplier deliveries before starting a count), variance review, approval and cancellation, purchases, supplier invoices/payments, accounting, reports, roles and troubleshooting.
