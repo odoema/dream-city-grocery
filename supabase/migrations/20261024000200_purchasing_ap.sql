@@ -107,7 +107,7 @@ declare
   v_cost numeric(14,2);
 begin
   select role into v_role from public.profiles where id=v_actor and active;
-  if v_role not in ('owner','manager','accountant') then raise exception 'Only owner, manager or accountant can create purchase orders'; end if;
+  if v_role is null or v_role not in ('owner','manager','accountant') then raise exception 'Only owner, manager or accountant can create purchase orders'; end if;
   if not exists(select 1 from public.suppliers where id=p_supplier_id and active) then raise exception 'Select an active supplier'; end if;
   if p_items is null or jsonb_typeof(p_items)<>'array' or jsonb_array_length(p_items)=0 then raise exception 'Add at least one product to the order'; end if;
   v_order_number := 'PO-'||to_char(current_date,'YYYYMMDD')||'-'||lpad(nextval('public.purchase_order_number_seq')::text,4,'0');
@@ -157,7 +157,7 @@ declare
   v_ap_account uuid;
 begin
   select role into v_role from public.profiles where id=v_actor and active;
-  if v_role not in ('owner','manager','accountant') then raise exception 'Only owner, manager or accountant can receive supplier invoices'; end if;
+  if v_role is null or v_role not in ('owner','manager','accountant') then raise exception 'Only owner, manager or accountant can receive supplier invoices'; end if;
   if not exists(select 1 from public.suppliers where id=p_supplier_id and active) then raise exception 'Select an active supplier'; end if;
   if nullif(trim(p_invoice_number),'') is null then raise exception 'Supplier invoice number is required'; end if;
   if p_due_date is not null and p_invoice_date is not null and p_due_date<p_invoice_date then raise exception 'Due date cannot be before invoice date'; end if;
@@ -236,7 +236,7 @@ declare
   v_code text;
 begin
   select role into v_role from public.profiles where id=v_actor and active;
-  if v_role not in ('owner','manager','accountant') then raise exception 'Only owner, manager or accountant can pay suppliers'; end if;
+  if v_role is null or v_role not in ('owner','manager','accountant') then raise exception 'Only owner, manager or accountant can pay suppliers'; end if;
   if p_payment_method not in ('cash','mobile_money','card','bank') then raise exception 'Choose cash, mobile money, card or bank for supplier payment'; end if;
   if nullif(trim(p_payment_reference),'') is null then raise exception 'Payment reference is required'; end if;
   if p_amount<=0 then raise exception 'Payment must be greater than zero'; end if;
