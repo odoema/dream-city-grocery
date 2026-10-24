@@ -67,3 +67,18 @@ The dashboard only derives today's sales from the latest 30 records loaded by th
 - Discounts are posted as a debit to \`4900 Sales Returns & Discounts\`, while sales revenue is credited before discount. This keeps the journal balanced.
 - Credit sales debit Accounts Receivable (\`1100\`) and require an active customer.
 - The credit-limit MVP check sums completed credit sales; a customer payment/credit-settlement workflow is not yet implemented. Do not treat the displayed total as a full receivables ledger until settlement functionality exists.
+
+
+## 6. Enable purchasing and accounts payable
+
+The purchasing module is a second, additive migration. It does not reset or drop existing tables.
+
+1. Open the SQL Editor for **Dream-City-Grocery / nohdgmylncjtdymfshfy** only: https://supabase.com/dashboard/project/nohdgmylncjtdymfshfy/sql/new
+2. Open `supabase/migrations/20261024000200_purchasing_ap.sql` from the main branch: https://github.com/odoema/dream-city-grocery/blob/main/supabase/migrations/20261024000200_purchasing_ap.sql
+3. Copy the SQL file contents only (do not include Markdown fences) into the SQL Editor and run it once.
+4. Confirm the new tables exist: `purchase_orders`, `purchase_order_items`, `supplier_invoices`, `supplier_invoice_items`, `goods_receipts`, and `supplier_payments`.
+5. Refresh https://odoema.github.io/dream-city-grocery/ and sign in as the owner.
+
+The purchasing UI supports supplier records, purchase orders, goods receipt with supplier invoice posting, inventory movements, balanced Inventory/Accounts Payable journals, and supplier payments. Posting a received invoice is atomic. Invoice numbers and payment references are checked for duplicates. Goods received against a purchase order are checked against the outstanding ordered quantities.
+
+**Operational note:** the UI currently uses guided prompts for purchase-order and invoice line entry. Verify supplier invoices and stock quantities carefully before confirming. Tax is not included; tax handling remains disabled pending the business tax policy. The Balance Sheet and Cash Flow Statement still need a dedicated reporting pass.
