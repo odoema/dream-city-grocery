@@ -645,11 +645,27 @@
     toast('Customer saved. Credit sales are subject to the configured limit.');
   }
 
+  async function generateUniqueSku(productName, excludeId) {
+    const prefix = String(productName || 'ITEM')
+      .normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '')
+      .toUpperCase().replace(/[^A-Z0-9]+/g, '').slice(0, 5) || 'ITEM';
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const suffix = crypto.randomUUID().replace(/-/g, '').slice(0, 7).toUpperCase();
+      const candidate = 'DCG-' + prefix + '-' + suffix;
+      let query = client.from('products').select('id').eq('sku', candidate).limit(1);
+      const result = await query;
+      if (result.error) throw new Error(result.error.message);
+      if (!result.data.length || (excludeId && result.data.every(row => row.id === excludeId))) return candidate;
+    }
+    throw new Error('Could not generate a unique SKU. Please try again.');
+  }
+
   async function editProduct(id) {
     if (!profile || !['owner','manager'].includes(profile.role)) return toast('Only an owner or manager can edit products.');
     const p=products.find(x=>x.id===id); if(!p)return;
     const name=prompt('Product name:',p.name); if(name===null)return; if(!name.trim())return toast('Product name is required.');
-    const sku=prompt('Unique SKU / product code:',p.sku); if(sku===null)return; if(!sku.trim())return toast('SKU is required.');
+    let sku=prompt('Unique SKU / product code (leave blank to generate a new unique SKU):',p.sku); if(sku===null)return;
+    if(!sku.trim()) { try { sku=await generateUniqueSku(name.trim(), id); } catch(e) { return toast('Could not generate SKU: '+e.message); } }
     const buyingRaw=prompt('Buying cost in UGX:',String(p.buying_price||0)); if(buyingRaw===null)return;
     const sellingRaw=prompt('Selling price in UGX:',String(p.selling_price||0)); if(sellingRaw===null)return;
     const reorderRaw=prompt('Reorder level:',String(p.reorder_level||0)); if(reorderRaw===null)return;
@@ -680,8 +696,9 @@
     if (!profile || !['owner', 'manager'].includes(profile.role)) return toast('Only an owner or manager can add products.');
     const name = prompt('Product name:');
     if (!name || !name.trim()) return;
-    const sku = prompt('Unique SKU / product code:');
-    if (!sku || !sku.trim()) return;
+    let sku;
+    try { sku = await generateUniqueSku(name.trim()); }
+    catch (e) { return toast('Could not generate SKU: ' + e.message); }
     const buying = Number(prompt('Buying cost in UGX:', '0'));
     const selling = Number(prompt('Selling price in UGX:', '0'));
     const quantity = Number(prompt('Opening stock quantity:', '0'));
@@ -700,11 +717,11 @@
       categoryId = category.id;
     }
     const result = await client.from('products').insert({
-      name: name.trim(), sku: sku.trim(), buying_price: buying, selling_price: selling,
+      name: name.trim(), sku, buying_price: buying, selling_price: selling,
       quantity_on_hand: quantity, reorder_level: reorder, category_id: categoryId, active: true
     }).select('id').single();
     if (result.error) return toast('Could not save product: ' + result.error.message);
-    toast('Product saved.');
+    toast('Product saved with SKU ' + sku + '.');
     await loadData();
   }
 
