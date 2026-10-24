@@ -19,6 +19,24 @@ create table public.profiles (
   updated_at timestamptz not null default now()
 );
 
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $
+begin
+  insert into public.profiles(id, full_name, role, active)
+  values (new.id, coalesce(new.raw_user_meta_data->>'full_name',''), 'cashier', true)
+  on conflict (id) do nothing;
+  return new;
+end;
+$;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
 create table public.categories (
   id uuid primary key default gen_random_uuid(),
   name text not null unique,
@@ -216,9 +234,6 @@ alter table public.audit_log enable row level security;
 
 create policy "staff can read own profile or managers can read all" on public.profiles for select to authenticated
 using (id = (select auth.uid()) or public.current_staff_role() in ('owner','manager','accountant'));
-create policy "managers can update staff profiles" on public.profiles for update to authenticated
-using (public.current_staff_role() in ('owner','manager')) with check (public.current_staff_role() in ('owner','manager'));
-
 create policy "active staff read categories" on public.categories for select to authenticated using (public.is_active_staff());
 create policy "managers manage categories" on public.categories for all to authenticated using (public.can_manage_products()) with check (public.can_manage_products());
 create policy "active staff read products" on public.products for select to authenticated using (public.is_active_staff());
@@ -375,7 +390,7 @@ begin
   values(v_journal_id,v_payment_account,'Sale proceeds',v_total,0);
   if v_subtotal-v_discount > 0 then
     insert into public.journal_lines(journal_id,account_id,description,debit,credit)
-    values(v_journal_id,v_revenue_account,'Net sales revenue',0,v_subtotal-v_discount);
+    values(v_journal_id,v_revenue_account,'Gross sales before authorized discount',0,v_subtotal);
   end if;
   if v_discount > 0 then
     insert into public.journal_lines(journal_id,account_id,description,debit,credit)
@@ -410,7 +425,6 @@ grant execute on function public.complete_sale(jsonb, public.payment_method, uui
 grant usage on schema public to authenticated;
 grant select on public.profiles, public.categories, public.products, public.customers, public.suppliers, public.accounts, public.sales, public.sale_items, public.inventory_movements, public.journals, public.journal_lines, public.audit_log to authenticated;
 grant insert, update, delete on public.categories, public.products, public.customers, public.suppliers to authenticated;
-grant update on public.profiles to authenticated;
 grant usage, select on sequence public.receipt_number_seq to authenticated;
 
 commit;
