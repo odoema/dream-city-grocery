@@ -398,7 +398,9 @@
   function chooseSupplier() {
     const active = suppliers.filter(s=>s.active);
     if (!active.length) { toast('Add a supplier first.'); return null; }
-    const answer = prompt('Choose supplier by number:\n'+active.map((s,i)=>(i+1)+'. '+s.name+(s.phone?' · '+s.phone:'')).join('\n'));
+    const answer = prompt('Choose supplier by number:
+'+active.map((s,i)=>(i+1)+'. '+s.name+(s.phone?' · '+s.phone:'')).join('
+'));
     if (answer===null) return null;
     const n=Number(answer);
     if (!Number.isInteger(n)||n<1||n>active.length) { toast('Invalid supplier selection.'); return null; }
@@ -408,7 +410,11 @@
   function promptPurchaseItems(title) {
     const activeProducts = products.filter(p=>p.active);
     if (!activeProducts.length) { toast('Add products to inventory first.'); return null; }
-    const raw = prompt(title+'\nEnter each line as SKU:quantity:unit_cost, separated by semicolons.\nAvailable SKUs:\n'+activeProducts.map(p=>p.sku+' — '+p.name).join('\n'));
+    const raw = prompt(title+'
+Enter each line as SKU:quantity:unit_cost, separated by semicolons.
+Available SKUs:
+'+activeProducts.map(p=>p.sku+' — '+p.name).join('
+'));
     if (raw===null) return null;
     const items=[];
     for (const part of raw.split(';')) {
@@ -459,7 +465,9 @@
     const orderCandidates=purchaseOrders.filter(o=>o.supplier_id===supplier.id&&['ordered','part_received'].includes(o.status));
     let orderId=null;
     if(orderCandidates.length){
-      const use=prompt('Optional purchase order number to match (leave blank if not linked):\n'+orderCandidates.map(o=>o.order_number).join('\n'),'');
+      const use=prompt('Optional purchase order number to match (leave blank if not linked):
+'+orderCandidates.map(o=>o.order_number).join('
+'),'');
       if(use===null)return;
       if(use.trim()){
         const order=orderCandidates.find(o=>o.order_number.toLowerCase()===use.trim().toLowerCase());
@@ -696,15 +704,19 @@
     sales = [];
     setSignedIn(false);
     renderCart();
-    if (!client) { setConnectionStatus('Setup required', 'Supabase configuration missing', 'error'); return; }\n    if (!session) { setConnectionStatus('Live system configured', 'Sign in to verify live data access', 'pending'); return; }\n    setConnectionStatus('Checking connection', 'Verifying staff access and live data', 'pending');
+    if (!client) { setConnectionStatus('Setup required', 'Supabase configuration missing', 'error'); return; }
+    if (!session) { setConnectionStatus('Live system configured', 'Sign in to verify live data access', 'pending'); return; }
+    setConnectionStatus('Checking connection', 'Verifying staff access and live data', 'pending');
     const result = await client.from('profiles').select('id,full_name,role,active').eq('id', session.user.id).maybeSingle();
     if (result.error) {
-      setConnectionStatus('Connection issue', 'Could not verify staff profile', 'error');\n      setMessage('Could not load staff profile: ' + result.error.message, true);
+      setConnectionStatus('Connection issue', 'Could not verify staff profile', 'error');
+      setMessage('Could not load staff profile: ' + result.error.message, true);
       await client.auth.signOut();
       return;
     }
     if (!result.data || !result.data.active) {
-      setConnectionStatus('Sign-in not authorised', 'Ask the owner to activate your staff profile', 'error');\n      setMessage('This login has no active Dream City staff profile. Ask the owner to configure it.', true);
+      setConnectionStatus('Sign-in not authorised', 'Ask the owner to activate your staff profile', 'error');
+      setMessage('This login has no active Dream City staff profile. Ask the owner to configure it.', true);
       await client.auth.signOut();
       return;
     }
@@ -716,7 +728,8 @@
       showView('dashboard');
       setMessage('');
     } catch (error) {
-      setConnectionStatus('Connection issue', 'Live data could not be loaded', 'error');\n      setMessage('Connected, but data could not load: ' + (error.message || 'Check the database migration and permissions.'), true);
+      setConnectionStatus('Connection issue', 'Live data could not be loaded', 'error');
+      setMessage('Connected, but data could not load: ' + (error.message || 'Check the database migration and permissions.'), true);
     }
   }
 
