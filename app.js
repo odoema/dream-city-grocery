@@ -23,6 +23,9 @@
   let suppliers = [];
   let purchaseOrders = [];
   let supplierInvoices = [];
+  let stocktakeSession = null;
+  let stocktakeItems = [];
+  let stocktakeHistory = [];
   let cart = [];
   let lastReceipt = null;
   let pendingIdempotencyKey = null;
@@ -68,10 +71,11 @@
     const target = $(view + '-view');
     if (target) target.classList.remove('hidden');
     document.querySelectorAll('.nav').forEach(el => el.classList.toggle('active', el.dataset.view === view));
-    const titles = { dashboard: 'Owner dashboard', pos: 'Point of Sale', inventory: 'Inventory management', purchases: 'Purchases', accounting: 'Accounting', reports: 'Reports & analytics' };
+    const titles = { dashboard: 'Owner dashboard', pos: 'Point of Sale', inventory: 'Inventory management', stocktake: 'Stock Taking & Reconciliation', purchases: 'Purchases', accounting: 'Accounting', reports: 'Reports & analytics' };
     $('page-title').textContent = titles[view] || 'Dream City Grocery';
     if (view === 'pos') renderProducts();
     if (view === 'inventory') renderInventory();
+    if (view === 'stocktake') loadStocktakeData().catch(error => toast('Stock-taking could not load: ' + error.message));
     if (view === 'purchases') loadPurchaseData().catch(error => toast('Purchases could not load: ' + error.message));
     if (view === 'accounting') loadAccountingData().catch(error => toast('Accounting could not load: ' + error.message));
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -232,6 +236,111 @@
     if (footer) footer.textContent = 'Connected · Live database';
   }
 
+
+
+  function canManageStocktake() { return profile && ['owner','manager','accountant'].includes(profile.role); }
+
+  async function loadStocktakeData() {
+    if (!client || !profile) return;
+    if (!canManageStocktake()) {
+      $('stocktake-view').innerHTML = '<div class="notice"><b>Access restricted</b><span>Stock-taking is available to owners, managers and accountants.</span></div>';
+      return;
+    }
+    const [sessionResult, historyResult] = await Promise.all([
+      client.from('stocktake_sessions').select('id,session_number,status,notes,started_at,completed_at').eq('status','draft').order('started_at',{ascending:false}).limit(1),
+      client.from('stocktake_sessions').select('id,session_number,status,started_at,completed_at').order('started_at',{ascending:false}).limit(10)
+    ]);
+    if (sessionResult.error) throw sessionResult.error;
+    if (historyResult.error) throw historyResult.error;
+    stocktakeSession = sessionResult.data?.[0] || null;
+    stocktakeHistory = historyResult.data || [];
+    stocktakeItems = [];
+    if (stocktakeSession) {
+      const itemsResult = await client.from('stocktake_items')
+        .select('id,session_id,product_id,system_quantity,counted_quantity,unit_cost,counted_at,products(name,sku,unit,active)')
+        .eq('session_id',stocktakeSession.id).order('product_id');
+      if (itemsResult.error) throw itemsResult.error;
+      stocktakeItems = itemsResult.data || [];
+    }
+    renderStocktake(stocktakeHistory);
+  }
+
+  function renderStocktake(history) {
+    const session = stocktakeSession;
+    const counted = stocktakeItems.filter(item => item.counted_quantity !== null).length;
+    const varianceItems = stocktakeItems.filter(item => item.counted_quantity !== null && Number(item.counted_quantity) !== Number(item.system_quantity)).length;
+    const summary = $('stocktake-summary');
+    summary.innerHTML = session ? [
+      ['Current session', session.session_number],
+      ['Products counted', counted + ' / ' + stocktakeItems.length],
+      ['Count variances', String(varianceItems)],
+      ['Status', 'Draft — not posted']
+    ].map(([label,value]) => '<article class="metric"><span>'+escapeHtml(label)+'</span><strong>'+escapeHtml(value)+'</strong></article>').join('') :
+      '<article class="metric"><span>Current session</span><strong>None</strong><small>Start a session after recording new purchases.</small></article>';
+    $('start-stocktake').disabled = !!session;
+    $('finalize-stocktake').disabled = !session || !stocktakeItems.length || counted !== stocktakeItems.length;
+    $('cancel-stocktake').disabled = !session;
+    $('finalize-stocktake').textContent = session ? (counted === stocktakeItems.length ? 'Approve & post adjustments' : 'Count all products first') : 'Approve & post adjustments';
+    const q = ($('stocktake-search').value || '').trim().toLowerCase();
+    $('stocktake-items').innerHTML = session ? (stocktakeItems.filter(item => {
+      const p = item.products || {};
+      return (String(p.name||'')+' '+String(p.sku||'')).toLowerCase().includes(q);
+    }).map(item => {
+      const p = item.products || {};
+      const hasCount = item.counted_quantity !== null;
+      const variance = hasCount ? Number(item.counted_quantity)-Number(item.system_quantity) : null;
+      return '<tr><td>'+escapeHtml(p.sku||'')+'</td><td><b>'+escapeHtml(p.name||'Unknown product')+'</b></td><td>'+escapeHtml(p.unit||'piece')+'</td>'+
+        '<td>'+Number(item.system_quantity)+'</td><td><input class="search compact stocktake-count-input" inputmode="decimal" type="number" min="0" step="0.001" aria-label="Count for '+escapeHtml(p.name||p.sku||'product')+'" data-product-id="'+item.product_id+'" value="'+(hasCount?Number(item.counted_quantity):'')+'" placeholder="Enter count" style="max-width:130px" /></td>'+
+        '<td>'+(hasCount?(variance>0?'+':'')+variance:'—')+'</td><td>'+(hasCount?'Counted':'Not counted')+'</td>'+
+        '<td><button class="secondary stocktake-save" data-product-id="'+item.product_id+'" type="button">Save count</button></td></tr>';
+    }).join('') || '<tr><td colspan="8">No matching products.</td></tr>') : '<tr><td colspan="8">No open session. Click “Start stocktake” to capture the current system quantities.</td></tr>';
+    $('stocktake-history').innerHTML = history.length ? history.map(row =>
+      '<tr><td><b>'+escapeHtml(row.session_number)+'</b></td><td>'+escapeHtml(new Date(row.started_at).toLocaleString('en-GB'))+'</td><td>'+escapeHtml(row.status)+'</td><td>'+(row.id===session?.id?stocktakeItems.length:'—')+'</td><td>'+(row.completed_at?escapeHtml(new Date(row.completed_at).toLocaleString('en-GB')):'—')+'</td></tr>'
+    ).join('') : '<tr><td colspan="5">No stock-taking sessions yet.</td></tr>';
+    document.querySelectorAll('.stocktake-save').forEach(button => button.addEventListener('click', async () => {
+      const input = document.querySelector('.stocktake-count-input[data-product-id="'+button.dataset.productId+'"]');
+      if (!session || !input || input.value.trim()==='') return toast('Enter a physical count first.');
+      const quantity = Number(input.value);
+      if (!Number.isFinite(quantity) || quantity<0) return toast('Enter a valid count of zero or more.');
+      button.disabled = true;
+      const result = await client.rpc('record_stocktake_count',{p_session_id:session.id,p_product_id:button.dataset.productId,p_counted_quantity:quantity});
+      button.disabled = false;
+      if (result.error) return toast('Count was not saved: '+result.error.message);
+      toast('Count saved.');
+      await loadStocktakeData();
+    }));
+  }
+
+  async function startStocktake() {
+    if (!canManageStocktake()) return toast('Stock-taking access required.');
+    if (!confirm('Have Dorcas’s new goods been recorded in Purchases, and can sales/receiving pause during the count? Start a stock snapshot now?')) return;
+    const notes = prompt('Stocktake notes (optional):', 'Physical stocktake');
+    if (notes === null) return;
+    const result = await client.rpc('start_stocktake',{p_notes:notes});
+    if (result.error) return toast('Could not start stocktake: '+result.error.message);
+    toast('Stocktake started: '+result.data.session_number+' ('+result.data.product_count+' products).');
+    await loadStocktakeData();
+  }
+
+  async function cancelStocktake() {
+    if (!stocktakeSession || !canManageStocktake()) return;
+    if (!confirm('Cancel '+stocktakeSession.session_number+'? No stock or accounting balances will be changed. You can then start a fresh session.')) return;
+    const result = await client.rpc('cancel_stocktake',{p_session_id:stocktakeSession.id});
+    if (result.error) return toast('Could not cancel session: '+result.error.message);
+    toast('Draft stocktake cancelled. No balances were changed.');
+    await loadStocktakeData();
+  }
+
+  async function finalizeStocktake() {
+    if (!stocktakeSession || !canManageStocktake()) return;
+    if (stocktakeItems.some(item => item.counted_quantity === null)) return toast('Count every product, including zero-stock products, first.');
+    const varianceCount = stocktakeItems.filter(item => Number(item.counted_quantity)!==Number(item.system_quantity)).length;
+    if (!confirm('Approve stocktake '+stocktakeSession.session_number+'? This will update product stock, add inventory movements and post accounting entries for '+varianceCount+' product variance(s). This cannot be undone through the POS.')) return;
+    const result = await client.rpc('finalize_stocktake',{p_session_id:stocktakeSession.id});
+    if (result.error) return toast('Stocktake not posted: '+result.error.message);
+    toast('Stocktake posted. Surplus: '+fmt(result.data.surplus_value)+'; shortage: '+fmt(result.data.shortage_value)+'.');
+    await Promise.all([loadStocktakeData(),loadData(),loadAccountingData().catch(()=>{})]);
+  }
 
   function canManagePurchases() { return profile && ['owner','manager','accountant'].includes(profile.role); }
 
@@ -597,6 +706,11 @@
   document.querySelectorAll('[data-goto]').forEach(button => button.addEventListener('click', () => showView(button.dataset.goto)));
   $('product-search').addEventListener('input', renderProducts);
   $('inventory-search').addEventListener('input', renderInventory);
+  $('start-stocktake').addEventListener('click', startStocktake);
+  $('refresh-stocktake').addEventListener('click', () => loadStocktakeData().catch(error => toast('Refresh failed: '+error.message)));
+  $('finalize-stocktake').addEventListener('click', finalizeStocktake);
+  $('cancel-stocktake').addEventListener('click', cancelStocktake);
+  $('stocktake-search').addEventListener('input', () => renderStocktake(stocktakeHistory));
   $('add-supplier').addEventListener('click', addSupplier);
   $('create-purchase-order').addEventListener('click', createPurchaseOrder);
   $('receive-supplier-invoice').addEventListener('click', receiveSupplierInvoice);
