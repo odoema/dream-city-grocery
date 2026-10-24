@@ -95,7 +95,7 @@
     const item = cart.find(row => row.id === id);
     if ((item ? item.qty : 0) + 1 > stockOf(product)) return toast('Quantity exceeds current stock.');
     if (item) item.qty += 1;
-    else cart.push({ id: product.id, sku: product.sku, name: product.name, price: priceOf(product), qty: 1, stock: stockOf(product) });
+    else cart.push({ id: product.id, sku: product.sku, name: product.name, price: priceOf(product), listedPrice: priceOf(product), qty: 1, stock: stockOf(product) });
     pendingIdempotencyKey = null;
     renderCart();
   }
@@ -107,13 +107,28 @@
     $('subtotal').textContent = fmt(subtotal);
     $('total').textContent = fmt(subtotal);
     $('cart-items').innerHTML = cart.length ? cart.map(item =>
-      '<div class="cart-item"><div class="ci-main"><b>' + escapeHtml(item.name) + '</b><small>' + fmt(item.price) + ' each</small></div>' +
-      '<div class="qty-controls"><button type="button" data-dec="' + item.id + '" aria-label="Decrease quantity">−</button><span>' + item.qty + '</span>' +
+      '<div class="cart-item"><div class="ci-main"><b>' + escapeHtml(item.name) + '</b><small>' + fmt(item.price) + ' each' + (item.price !== item.listedPrice ? ' · manager price override' : '') + '</small></div>' +
+      '<div class="qty-controls">' + (['owner','manager'].includes(profile?.role) ? '<button type="button" data-price="' + item.id + '" aria-label="Change selling price">₮</button>' : '') +
+      '<button type="button" data-dec="' + item.id + '" aria-label="Decrease quantity">−</button><span>' + item.qty + '</span>' +
       '<button type="button" data-inc="' + item.id + '" aria-label="Increase quantity">＋</button></div></div>'
     ).join('') : '<div class="empty-cart">Your cart is empty.<br/>Choose a product to begin.</div>';
     document.querySelectorAll('[data-dec]').forEach(button => button.addEventListener('click', () => changeQty(button.dataset.dec, -1)));
     document.querySelectorAll('[data-inc]').forEach(button => button.addEventListener('click', () => changeQty(button.dataset.inc, 1)));
+    document.querySelectorAll('[data-price]').forEach(button => button.addEventListener('click', () => changePrice(button.dataset.price)));
     $('checkout').disabled = !profile || busy || !cart.length;
+  }
+
+  function changePrice(id) {
+    if (!profile || !['owner','manager'].includes(profile.role)) return toast('Only an owner or manager can override a selling price.');
+    const item = cart.find(row => row.id === id);
+    if (!item) return;
+    const entered = prompt('Authorized selling price for ' + item.name + ' (listed price ' + fmt(item.listedPrice) + '):', String(item.price));
+    if (entered === null) return;
+    const price = Number(entered);
+    if (!Number.isFinite(price) || price < 0) return toast('Enter a valid non-negative selling price.');
+    item.price = Math.round(price * 100) / 100;
+    pendingIdempotencyKey = null;
+    renderCart();
   }
 
   function changeQty(id, delta) {
@@ -297,7 +312,9 @@
     $('checkout').textContent = 'Processing…';
     try {
       const result = await client.rpc('complete_sale', {
-        p_items: cart.map(item => ({ product_id: item.id, quantity: item.qty })),
+        p_items: cart.map(item => item.price !== item.listedPrice
+          ? ({ product_id: item.id, quantity: item.qty, unit_price: item.price })
+          : ({ product_id: item.id, quantity: item.qty })),
         p_payment_method: payment,
         p_idempotency_key: pendingIdempotencyKey,
         p_customer_id: customerId,
