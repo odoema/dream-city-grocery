@@ -50,7 +50,6 @@ $$;
 revoke all on function public.queue_management_notification(text,text,text,jsonb) from public, anon;
 grant execute on function public.queue_management_notification(text,text,text,jsonb) to authenticated;
 
-after insert or update of status on public.sales
 create or replace function public.notify_management_sale()
 returns trigger
 language plpgsql
