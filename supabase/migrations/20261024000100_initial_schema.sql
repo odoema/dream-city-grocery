@@ -372,9 +372,8 @@ begin
   if v_total < 0 then raise exception 'Sale total cannot be negative'; end if;
 
   if p_payment_method = 'credit' then
-    if not exists(select 1 from public.customers c where c.id=p_customer_id and c.active) then
-      raise exception 'Customer is inactive or not found';
-    end if;
+    perform 1 from public.customers c where c.id=p_customer_id and c.active for update;
+    if not found then raise exception 'Customer is inactive or not found'; end if;
     if (
       select coalesce(sum(s.total),0) from public.sales s
       where s.customer_id=p_customer_id and s.payment_method='credit' and s.status='completed'
