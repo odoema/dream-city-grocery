@@ -597,7 +597,7 @@
     const isCredit = $('payment-method').value === 'Credit';
     select.classList.toggle('hidden', !isCredit);
     label.classList.toggle('hidden', !isCredit);
-    select.innerHTML = '<option value="">Select customer…</option>' + customers.map(c =>
+    select.innerHTML = '<option value="">Select customer…</option>' + customers.filter(c => c.active).map(c =>
       '<option value="' + c.id + '">' + escapeHtml(c.name) + (c.phone ? ' · ' + escapeHtml(c.phone) : '') + '</option>'
     ).join('');
   }
