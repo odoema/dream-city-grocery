@@ -213,6 +213,28 @@
     ).join('');
   }
 
+  async function addCustomer() {
+    if (!profile || !['owner', 'manager'].includes(profile.role)) return toast('Only an owner or manager can add customers.');
+    const name = prompt('Customer name:');
+    if (!name || !name.trim()) return;
+    const phone = prompt('Customer phone (optional):', '') || null;
+    const limitRaw = prompt('Credit limit in UGX (enter 0 for no credit):', '0');
+    if (limitRaw === null) return;
+    const creditLimit = Number(limitRaw);
+    if (!Number.isFinite(creditLimit) || creditLimit < 0) return toast('Enter a valid non-negative credit limit.');
+    const result = await client.from('customers').insert({
+      name: name.trim(), phone: phone && phone.trim() ? phone.trim() : null,
+      credit_limit: creditLimit, active: true
+    }).select('id,name,phone,credit_limit').single();
+    if (result.error) return toast('Could not save customer: ' + result.error.message);
+    customers.push(result.data);
+    renderCustomerSelect();
+    $('payment-method').value = 'Credit';
+    renderCustomerSelect();
+    $('customer-select').value = result.data.id;
+    toast('Customer saved. Credit sales are subject to the configured limit.');
+  }
+
   async function addProduct() {
     if (!profile || !['owner', 'manager'].includes(profile.role)) return toast('Only an owner or manager can add products.');
     const name = prompt('Product name:');
@@ -353,6 +375,7 @@
   $('clear-cart').addEventListener('click', () => { cart = []; pendingIdempotencyKey = null; renderCart(); });
   $('checkout').addEventListener('click', checkout);
   $('add-product').addEventListener('click', addProduct);
+  $('add-customer').addEventListener('click', addCustomer);
   $('print-last-receipt').addEventListener('click', () => printReceipt(lastReceipt));
   $('sign-in-form').addEventListener('submit', async event => {
     event.preventDefault();
