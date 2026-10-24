@@ -702,8 +702,23 @@
   }
 
   $('today').textContent = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date());
-  document.querySelectorAll('.nav').forEach(button => button.addEventListener('click', () => showView(button.dataset.view)));
-  document.querySelectorAll('[data-goto]').forEach(button => button.addEventListener('click', () => showView(button.dataset.goto)));
+  // Delegate navigation so desktop sidebar and mobile bottom-nav clicks share one reliable handler.
+  // Give an explicit response when authentication/profile setup prevents opening a module.
+  document.addEventListener('click', event => {
+    const navButton = event.target.closest('button.nav[data-view]');
+    const gotoButton = event.target.closest('button[data-goto]');
+    const button = navButton || gotoButton;
+    if (!button) return;
+    event.preventDefault();
+    const destination = navButton ? navButton.dataset.view : gotoButton.dataset.goto;
+    if (!destination) return;
+    if (!profile) {
+      toast('Please sign in with an active staff account to open ' + (destination === 'pos' ? 'Point of Sale' : destination.charAt(0).toUpperCase() + destination.slice(1)) + '.');
+      $('login-email')?.focus({ preventScroll: true });
+      return;
+    }
+    showView(destination);
+  }, { passive: false });
   $('product-search').addEventListener('input', renderProducts);
   $('inventory-search').addEventListener('input', renderInventory);
   $('start-stocktake').addEventListener('click', startStocktake);
