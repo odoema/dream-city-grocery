@@ -10,7 +10,7 @@ window.DREAM_CITY_SUPABASE_CONFIG = {
 // workflows easier to use.
 setTimeout(function () {
   var script = document.createElement('script');
-  script.src = 'simple-workflows.js?v=1';
+  script.src = 'simple-workflows-v2.js?v=1';
   script.defer = true;
   document.head.appendChild(script);
 }, 0);
