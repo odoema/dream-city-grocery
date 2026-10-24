@@ -709,7 +709,8 @@
   $('start-stocktake').addEventListener('click', startStocktake);
   $('refresh-stocktake').addEventListener('click', () => loadStocktakeData().catch(error => toast('Refresh failed: '+error.message)));
   $('finalize-stocktake').addEventListener('click', finalizeStocktake);
-  $('stocktake-search').addEventListener('input', () => renderStocktake([]));
+  $('cancel-stocktake').addEventListener('click', cancelStocktake);
+  $('stocktake-search').addEventListener('input', () => renderStocktake(stocktakeHistory));
   $('add-supplier').addEventListener('click', addSupplier);
   $('create-purchase-order').addEventListener('click', createPurchaseOrder);
   $('receive-supplier-invoice').addEventListener('click', receiveSupplierInvoice);
