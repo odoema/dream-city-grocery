@@ -24,14 +24,14 @@ returns trigger
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 begin
   insert into public.profiles(id, full_name, role, active)
   values (new.id, coalesce(new.raw_user_meta_data->>'full_name',''), 'cashier', true)
   on conflict (id) do nothing;
   return new;
 end;
-$;
+$$;
 
 create trigger dream_city_on_auth_user_created
   after insert on auth.users
@@ -173,7 +173,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $$
 begin
   if new.quantity_on_hand > 0 then
     insert into public.inventory_movements(product_id,movement_type,quantity_delta,unit_cost,reference_type,reference_id,note,created_by)
@@ -181,7 +181,7 @@ begin
   end if;
   return new;
 end;
-$;
+$$;
 
 create trigger products_opening_stock_movement
   after insert on public.products
