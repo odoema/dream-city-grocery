@@ -30,6 +30,8 @@
   let lastReceipt = null;
   let pendingIdempotencyKey = null;
   let busy = false;
+  // Prevent overlapping auth callbacks from racing and resetting a valid session.
+  let sessionCheckId = 0;
 
   function toast(message) {
     const el = $('toast');
@@ -698,6 +700,7 @@ Available SKUs:
   }
 
   async function onSession(session) {
+    const checkId = ++sessionCheckId;
     profile = null;
     cart = [];
     products = [];
@@ -707,7 +710,16 @@ Available SKUs:
     if (!client) { setConnectionStatus('Setup required', 'Supabase configuration missing', 'error'); return; }
     if (!session) { setConnectionStatus('Live system configured', 'Sign in to verify live data access', 'pending'); return; }
     setConnectionStatus('Checking connection', 'Verifying staff access and live data', 'pending');
-    const result = await client.from('profiles').select('id,full_name,role,active').eq('id', session.user.id).maybeSingle();
+    let result;
+    try {
+      result = await client.from('profiles').select('id,full_name,role,active').eq('id', session.user.id).maybeSingle();
+    } catch (error) {
+      if (checkId !== sessionCheckId) return;
+      setConnectionStatus('Connection issue', 'Could not verify staff profile', 'error');
+      setMessage('Could not verify your staff profile because the database request failed. Check your connection and try again.', true);
+      return;
+    }
+    if (checkId !== sessionCheckId) return;
     if (result.error) {
       setConnectionStatus('Connection issue', 'Could not verify staff profile', 'error');
       setMessage('Could not load staff profile: ' + result.error.message, true);
@@ -725,11 +737,13 @@ Available SKUs:
     $('staff-status').textContent = (profile.full_name || session.user.email) + ' · ' + profile.role;
     try {
       await loadData();
+      if (checkId !== sessionCheckId) return;
       showView('dashboard');
       setMessage('');
     } catch (error) {
+      if (checkId !== sessionCheckId) return;
       setConnectionStatus('Connection issue', 'Live data could not be loaded', 'error');
-      setMessage('Connected, but data could not load: ' + (error.message || 'Check the database migration and permissions.'), true);
+      setMessage('You signed in, but live data could not load: ' + (error.message || 'Check the database migration and permissions.'), true);
     }
   }
 
@@ -815,10 +829,20 @@ Available SKUs:
     const password = $('login-password').value;
     $('sign-in-button').disabled = true;
     setMessage('Signing in…');
-    const result = await client.auth.signInWithPassword({ email, password });
-    $('sign-in-button').disabled = false;
-    if (result.error) setMessage(result.error.message, true);
-    else await onSession(result.data.session);
+    try {
+      const result = await client.auth.signInWithPassword({ email, password });
+      if (result.error) {
+        setMessage(result.error.message, true);
+        return;
+      }
+      // The auth-state listener handles the session/profile transition. Calling
+      // onSession here as well caused duplicate concurrent profile/data loads.
+      setMessage('Credentials accepted. Verifying staff access…');
+    } catch (error) {
+      setMessage('Unable to reach the sign-in service. Check your internet connection and try again.', true);
+    } finally {
+      $('sign-in-button').disabled = false;
+    }
   });
   $('sign-out').addEventListener('click', async () => {
     if (client) await client.auth.signOut();
