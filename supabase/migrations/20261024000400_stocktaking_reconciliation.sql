@@ -198,6 +198,31 @@ begin
 end;
 $$;
 
+
+create or replace function public.cancel_stocktake(p_session_id uuid)
+returns jsonb
+language plpgsql security definer set search_path = ''
+as $
+declare
+  v_actor uuid := auth.uid();
+  v_role public.staff_role;
+  v_session public.stocktake_sessions%rowtype;
+begin
+  select role into v_role from public.profiles where id=v_actor and active;
+  if v_actor is null or v_role is null or v_role not in ('owner','manager','accountant') then
+    raise exception 'Only owner, manager or accountant can cancel stock-taking';
+  end if;
+  select * into v_session from public.stocktake_sessions where id=p_session_id for update;
+  if not found or v_session.status<>'draft' then raise exception 'Open stock-taking session not found'; end if;
+  update public.stocktake_sessions set status='cancelled',completed_by=v_actor,completed_at=now() where id=p_session_id;
+  insert into public.audit_log(actor_id,action,entity_type,entity_id,details)
+  values(v_actor,'stocktake.cancelled','stocktake_session',p_session_id,jsonb_build_object('session_number',v_session.session_number));
+  return jsonb_build_object('id',p_session_id,'status','cancelled');
+end;
+$;
+
+revoke all on function public.cancel_stocktake(uuid) from public, anon;
+grant execute on function public.cancel_stocktake(uuid) to authenticated;
 revoke all on function public.start_stocktake(text) from public, anon;
 revoke all on function public.record_stocktake_count(uuid,uuid,numeric) from public, anon;
 revoke all on function public.finalize_stocktake(uuid) from public, anon;
