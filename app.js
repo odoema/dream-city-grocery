@@ -48,6 +48,20 @@
     }
   }
 
+  function setConnectionStatus(label, detail, state = 'pending') {
+    const labelEl = $('connection-label');
+    const detailEl = $('connection-detail');
+    const dot = $('connection-dot');
+    if (labelEl) labelEl.textContent = label;
+    if (detailEl) detailEl.textContent = detail;
+    if (dot) {
+      dot.classList.toggle('connection-ok', state === 'ok');
+      dot.classList.toggle('connection-error', state === 'error');
+      dot.classList.toggle('connection-pending', state === 'pending');
+      dot.setAttribute('aria-label', state === 'ok' ? 'Connected' : state === 'error' ? 'Connection issue' : 'Connection not yet verified');
+    }
+  }
+
   function setSignedIn(signedIn) {
     $('auth-panel').classList.toggle('hidden', signedIn);
     $('sign-out').classList.toggle('hidden', !signedIn);
@@ -682,15 +696,15 @@
     sales = [];
     setSignedIn(false);
     renderCart();
-    if (!session || !client) return;
+    if (!client) { setConnectionStatus('Setup required', 'Supabase configuration missing', 'error'); return; }\n    if (!session) { setConnectionStatus('Live system configured', 'Sign in to verify live data access', 'pending'); return; }\n    setConnectionStatus('Checking connection', 'Verifying staff access and live data', 'pending');
     const result = await client.from('profiles').select('id,full_name,role,active').eq('id', session.user.id).maybeSingle();
     if (result.error) {
-      setMessage('Could not load staff profile: ' + result.error.message, true);
+      setConnectionStatus('Connection issue', 'Could not verify staff profile', 'error');\n      setMessage('Could not load staff profile: ' + result.error.message, true);
       await client.auth.signOut();
       return;
     }
     if (!result.data || !result.data.active) {
-      setMessage('This login has no active Dream City staff profile. Ask the owner to configure it.', true);
+      setConnectionStatus('Sign-in not authorised', 'Ask the owner to activate your staff profile', 'error');\n      setMessage('This login has no active Dream City staff profile. Ask the owner to configure it.', true);
       await client.auth.signOut();
       return;
     }
@@ -702,7 +716,7 @@
       showView('dashboard');
       setMessage('');
     } catch (error) {
-      setMessage('Connected, but data could not load: ' + (error.message || 'Check the database migration and permissions.'), true);
+      setConnectionStatus('Connection issue', 'Live data could not be loaded', 'error');\n      setMessage('Connected, but data could not load: ' + (error.message || 'Check the database migration and permissions.'), true);
     }
   }
 
