@@ -2,6 +2,15 @@
 
 BEGIN TRANSACTION READ ONLY;
 
+-- Fail closed if the session is not actually read-only.
+DO $$
+BEGIN
+  IF current_setting('transaction_read_only') <> 'on' THEN
+    RAISE EXCEPTION 'READ_ONLY_REQUIRED: transaction_read_only is not on';
+  END IF;
+END
+$$;
+
 SELECT
   current_database() AS database_name,
   current_user AS database_user,
@@ -10,6 +19,48 @@ SELECT
 
 SELECT
   current_setting('transaction_read_only') = 'on' AS read_only_transaction_verified;
+
+-- Verify required relations. information_schema visibility is checked first so
+-- an absent object can be distinguished from a privilege problem where possible.
+DO $$
+DECLARE
+  required_name text;
+  required_names text[] := ARRAY[
+    'public.products',
+    'public.categories',
+    'public.suppliers',
+    'public.inventory_movements',
+    'public.sales',
+    'public.sale_items',
+    'public.purchase_orders',
+    'public.goods_receipts',
+    'public.journals',
+    'public.journal_lines',
+    'public.audit_log'
+  ];
+  schema_name text;
+  object_name text;
+BEGIN
+  FOREACH required_name IN ARRAY required_names LOOP
+    schema_name := split_part(required_name, '.', 1);
+    object_name := split_part(required_name, '.', 2);
+
+    IF to_regclass(required_name) IS NULL THEN
+      IF EXISTS (
+        SELECT 1
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = schema_name
+          AND c.relname = object_name
+      ) THEN
+        RAISE EXCEPTION 'INSUFFICIENT_PRIVILEGE_OR_VISIBILITY: required relation % exists but is not visible through to_regclass()', required_name;
+      ELSE
+        RAISE EXCEPTION 'REQUIRED_OBJECT_MISSING: required relation % is absent', required_name;
+      END IF;
+    END IF;
+  END LOOP;
+END
+$$;
 
 SELECT
   to_regclass('public.products') AS products_table,
@@ -23,6 +74,26 @@ SELECT
   to_regclass('public.journals') AS journals_table,
   to_regclass('public.journal_lines') AS journal_lines_table,
   to_regclass('public.audit_log') AS audit_log_table;
+
+-- Verify the expected Product Intelligence RPC. If PostgreSQL cannot resolve it,
+-- distinguish an absent function from a visibility/privilege problem where possible.
+DO $$
+BEGIN
+  IF to_regprocedure('public.search_dream_city_products(text,integer)') IS NULL THEN
+    IF EXISTS (
+      SELECT 1
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public'
+        AND p.proname = 'search_dream_city_products'
+    ) THEN
+      RAISE EXCEPTION 'INSUFFICIENT_PRIVILEGE_OR_VISIBILITY: search_dream_city_products exists in public but the expected signature is not visible';
+    ELSE
+      RAISE EXCEPTION 'REQUIRED_OBJECT_MISSING: public.search_dream_city_products(text,integer) is absent';
+    END IF;
+  END IF;
+END
+$$;
 
 SELECT
   to_regprocedure('public.search_dream_city_products(text,integer)') AS product_intelligence_rpc;
@@ -43,16 +114,16 @@ WHERE n.nspname = 'public'
 ORDER BY c.relname;
 
 SELECT
-  CASE WHEN to_regclass('public.products') IS NOT NULL THEN (SELECT COUNT(*) FROM public.products) ELSE NULL END AS products,
-  CASE WHEN to_regclass('public.categories') IS NOT NULL THEN (SELECT COUNT(*) FROM public.categories) ELSE NULL END AS categories,
-  CASE WHEN to_regclass('public.suppliers') IS NOT NULL THEN (SELECT COUNT(*) FROM public.suppliers) ELSE NULL END AS suppliers,
-  CASE WHEN to_regclass('public.inventory_movements') IS NOT NULL THEN (SELECT COUNT(*) FROM public.inventory_movements) ELSE NULL END AS inventory_movements,
-  CASE WHEN to_regclass('public.sales') IS NOT NULL THEN (SELECT COUNT(*) FROM public.sales) ELSE NULL END AS sales,
-  CASE WHEN to_regclass('public.sale_items') IS NOT NULL THEN (SELECT COUNT(*) FROM public.sale_items) ELSE NULL END AS sale_items,
-  CASE WHEN to_regclass('public.purchase_orders') IS NOT NULL THEN (SELECT COUNT(*) FROM public.purchase_orders) ELSE NULL END AS purchase_orders,
-  CASE WHEN to_regclass('public.goods_receipts') IS NOT NULL THEN (SELECT COUNT(*) FROM public.goods_receipts) ELSE NULL END AS goods_receipts,
-  CASE WHEN to_regclass('public.journals') IS NOT NULL THEN (SELECT COUNT(*) FROM public.journals) ELSE NULL END AS journals,
-  CASE WHEN to_regclass('public.journal_lines') IS NOT NULL THEN (SELECT COUNT(*) FROM public.journal_lines) ELSE NULL END AS journal_lines,
-  CASE WHEN to_regclass('public.audit_log') IS NOT NULL THEN (SELECT COUNT(*) FROM public.audit_log) ELSE NULL END AS audit_log;
+  (SELECT COUNT(*) FROM public.products) AS products,
+  (SELECT COUNT(*) FROM public.categories) AS categories,
+  (SELECT COUNT(*) FROM public.suppliers) AS suppliers,
+  (SELECT COUNT(*) FROM public.inventory_movements) AS inventory_movements,
+  (SELECT COUNT(*) FROM public.sales) AS sales,
+  (SELECT COUNT(*) FROM public.sale_items) AS sale_items,
+  (SELECT COUNT(*) FROM public.purchase_orders) AS purchase_orders,
+  (SELECT COUNT(*) FROM public.goods_receipts) AS goods_receipts,
+  (SELECT COUNT(*) FROM public.journals) AS journals,
+  (SELECT COUNT(*) FROM public.journal_lines) AS journal_lines,
+  (SELECT COUNT(*) FROM public.audit_log) AS audit_log;
 
 COMMIT;
