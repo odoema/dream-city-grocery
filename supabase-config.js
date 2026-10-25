@@ -5,6 +5,10 @@ window.DREAM_CITY_SUPABASE_CONFIG = {
   anonKey: 'sb_publishable_YeerBKReVu0NzhqleFJ4Kw_vkKLk92X'
 };
 
+// app.js expects the Supabase browser client to already exist. Load it synchronously
+// while the HTML parser is still processing this file, so app.js can create its client.
+document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\\/script>');
+
 // Load optional usability and management layers after the core application.
 // Product Intelligence is loaded explicitly by index.html, so do not load it again here.
 // workflow-audit.js is intentionally not loaded in the browser because its old DOM observer
