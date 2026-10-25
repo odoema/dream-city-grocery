@@ -1,0 +1,44 @@
+name: Repair app.js from known-good revision
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/repair-app-restore.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Restore app.js from known-good commit and expose shared client
+        shell: bash
+        run: |
+          git checkout 35cdafaa6f1172a97af860f377cf1b08b8b55e36 -- app.js
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('app.js')
+          s = p.read_text()
+          needle = "      })\n    : null;\n\n  const $ = id => document.getElementById(id);"
+          replacement = "      })\n    : null;\n\n  // Reuse the core application client in optional modules to avoid multiple\n  // GoTrueClient instances for the same Supabase project in one page.\n  window.DREAM_CITY_SUPABASE_CLIENT = client;\n\n  const $ = id => document.getElementById(id);"
+          if needle not in s:
+              raise SystemExit('Expected app.js anchor was not found')
+          p.write_text(s.replace(needle, replacement, 1))
+          PY
+
+      - name: Commit repaired app.js
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app.js
+          git commit -m "Restore app.js and share Supabase client"
+          git push origin HEAD:main
