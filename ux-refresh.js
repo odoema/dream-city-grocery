@@ -79,9 +79,9 @@
       const pair = labels[nav.dataset.view];
       if (!pair) return;
       const span = nav.querySelector('span');
-      if (span) span.textContent = pair[0];
-      nav.title = pair[1];
-      nav.setAttribute('aria-label', pair[1]);
+      if (span && span.textContent !== pair[0]) span.textContent = pair[0];
+      if (nav.title !== pair[1]) nav.title = pair[1];
+      if (nav.getAttribute('aria-label') !== pair[1]) nav.setAttribute('aria-label', pair[1]);
     });
   }
 
