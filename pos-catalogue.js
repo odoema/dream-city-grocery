@@ -7,7 +7,7 @@
   let live = [];
   let departments = {};
   let activeDepartment = 'All';
-  let mounted = false;
+  let loading = false;
 
   const esc = v => String(v ?? '').replace(/[&<>\"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]));
   const norm = v => String(v ?? '').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
@@ -47,20 +47,26 @@
   }
 
   async function loadCatalogue(){
-    const c=getClient();
-    if(!c) throw new Error('Supabase client is not ready');
-    const [legacyResult, liveResult, deptResult] = await Promise.all([
-      c.from('dream_city_legacy_product_dictionary').select('source_handle,source_sku,source_name,source_category,display_name,source_price,lifecycle_status').order('source_name'),
-      c.from('products').select('id,name,sku,barcode,quantity_on_hand,selling_price,active,reorder_level').order('name'),
-      c.from('dream_city_category_dictionary').select('source_name,display_name,department,active').eq('active',true).order('sort_order')
-    ]);
-    if(legacyResult.error) throw legacyResult.error;
-    if(liveResult.error) throw liveResult.error;
-    legacy=legacyResult.data||[];
-    live=liveResult.data||[];
-    departments={};
-    (deptResult.data||[]).forEach(row=>{ departments[norm(row.source_name)] = row.department || 'Other'; });
-    if(deptResult.error) console.warn('Category dictionary unavailable:',deptResult.error.message);
+    if(loading) return;
+    loading=true;
+    try{
+      const c=getClient();
+      if(!c) throw new Error('Supabase client is not ready');
+      const [legacyResult, liveResult, deptResult] = await Promise.all([
+        c.from('dream_city_legacy_product_dictionary').select('source_handle,source_sku,source_name,source_category,display_name,source_price,lifecycle_status').order('source_name'),
+        c.from('products').select('id,name,sku,barcode,quantity_on_hand,selling_price,active,reorder_level').order('name'),
+        c.from('dream_city_category_dictionary').select('source_name,display_name,department,active').eq('active',true).order('sort_order')
+      ]);
+      if(legacyResult.error) throw legacyResult.error;
+      if(liveResult.error) throw liveResult.error;
+      legacy=legacyResult.data||[];
+      live=liveResult.data||[];
+      departments={};
+      (deptResult.data||[]).forEach(row=>{ departments[norm(row.source_name)] = row.department || 'Other'; });
+      if(deptResult.error) console.warn('Category dictionary unavailable:',deptResult.error.message);
+    } finally {
+      loading=false;
+    }
   }
 
   function findLive(item){
@@ -73,7 +79,7 @@
 
   function render(){
     const host=document.getElementById('dc-pos-catalogue');
-    if(!host) return;
+    if(!host || !legacy.length) return;
     const q=(document.getElementById('product-search')?.value||'').trim().toLowerCase();
     const rows=legacy.filter(item=>{
       if(activeDepartment!=='All' && departmentOf(item)!==activeDepartment) return false;
@@ -109,19 +115,28 @@
     }));
   }
 
-  function mount(){
+  async function mount(){
     const view=document.getElementById('pos-view');
     const grid=document.getElementById('product-grid');
-    if(!view || !grid || !profileReady()) return;
+    if(!view || !grid || view.classList.contains('hidden')) return;
     styles();
     if(!document.getElementById('dc-pos-catalogue')){
       const box=document.createElement('div');
       box.id='dc-pos-catalogue';
-      box.innerHTML=`<div class="dc-pos-banner"><b>341-product Dream City catalogue</b> — the old Loyverse quantities are not used. Live stock controls whether an item can be sold. Products with zero stock stay visible so staff can see the catalogue and know what needs receiving.</div><div class="dc-pos-head"><div><h4>Shop catalogue</h4><p>Search, choose a department, then tap an in-stock item to add it to the sale.</p></div><span class="dc-pos-count"></span></div><div class="dc-pos-departments"></div><div class="dc-pos-grid"></div>`;
+      box.innerHTML=`<div class="dc-pos-banner"><b>341-product Dream City catalogue</b> — the old Loyverse quantities are not used. Live stock controls whether an item can be sold. Products with zero stock stay visible so staff can see the catalogue and know what needs receiving.</div><div class="dc-pos-head"><div><h4>Shop catalogue</h4><p>Search, choose a department, then tap an in-stock item to add it to the sale.</p></div><span class="dc-pos-count"></span></div><div class="dc-pos-departments"></div><div class="dc-pos-grid"><div class="muted">Loading catalogue…</div></div>`;
       grid.parentNode.insertBefore(box,grid);
       grid.classList.add('dc-live-engine');
       const search=document.getElementById('product-search');
       if(search && !search.dataset.dcBound){search.dataset.dcBound='1';search.addEventListener('input',render);}
+    }
+    if(!legacy.length){
+      try{ await loadCatalogue(); }
+      catch(e){
+        console.error('Dream City POS catalogue:',e);
+        const host=document.querySelector('#dc-pos-catalogue .dc-pos-grid');
+        if(host) host.innerHTML='<div class="notice"><b>Catalogue preview unavailable</b><span>'+esc(e.message)+'</span></div>';
+        return;
+      }
     }
     const depts=['All',...Array.from(new Set(legacy.map(departmentOf))).sort()];
     const deptHost=document.querySelector('#dc-pos-catalogue .dc-pos-departments');
@@ -130,23 +145,8 @@
     render();
   }
 
-  function profileReady(){
-    return Boolean(document.getElementById('pos-view') && !document.getElementById('pos-view').classList.contains('hidden'));
-  }
-
   styles();
   const mo=new MutationObserver(()=>mount());
-  mo.observe(document.body,{subtree:true,childList:true});
-  setTimeout(async()=>{
-    try{
-      await loadCatalogue();
-      mount();
-    }catch(e){
-      console.error('Dream City POS catalogue:',e);
-      const grid=document.getElementById('product-grid');
-      if(grid && !document.getElementById('dc-pos-catalogue-error')){
-        const note=document.createElement('div');note.id='dc-pos-catalogue-error';note.className='notice';note.innerHTML='<b>Catalogue preview unavailable</b><span>'+esc(e.message)+'</span>';grid.parentNode.insertBefore(note,grid);
-      }
-    }
-  },1000);
+  mo.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
+  setTimeout(()=>mount(),1200);
 })();
