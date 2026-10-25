@@ -18,5 +18,11 @@ setTimeout(function () {
     audit.src = 'workflow-audit.js?v=1';
     audit.defer = true;
     document.head.appendChild(audit);
+    audit.onload = function () {
+      var smart = document.createElement('script');
+      smart.src = 'smart-purchasing.js?v=1';
+      smart.defer = true;
+      document.head.appendChild(smart);
+    };
   };
 }, 0);
