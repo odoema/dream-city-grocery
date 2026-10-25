@@ -21,7 +21,15 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 
 setup_fixture() {
   "${ADMIN[@]}" <<'SQL'
-DROP ROLE IF EXISTS audit_runner;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'audit_runner') THEN
+    EXECUTE 'DROP OWNED BY audit_runner';
+    EXECUTE 'DROP ROLE audit_runner';
+  END IF;
+END
+$$;
+
 CREATE ROLE audit_runner LOGIN PASSWORD 'audit_runner_password';
 
 DROP FUNCTION IF EXISTS public.search_dream_city_products(text, integer);
