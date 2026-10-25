@@ -5,9 +5,11 @@ window.DREAM_CITY_SUPABASE_CONFIG = {
   anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5vaGRnbXlsbmNqdGR5bWZzaGZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3OTY5NTksImV4cCI6MjEwODM3Mjk1OX0.ZMwnchFy93tGZJbI2lQY66Oh0bKaHKvhNhthFcjZkwk'
 };
 
-// app.js expects the Supabase browser client to already exist. Load it synchronously
-// while the HTML parser is still processing this file, so app.js can create its client.
-document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"><\\/script>');
+// app.js expects window.supabase before it starts. Use the browser UMD build,
+// not the package root, which is not guaranteed to expose a window global.
+// Pin the version and provide a CDN fallback so a transient CDN reset does not
+// leave the application with a missing Supabase client.
+document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.81.1/dist/umd/supabase.js" onerror="this.onerror=null;this.src=\'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.81.1/dist/umd/supabase.js\'"><\\/script>');
 
 // Load optional usability and management layers after the core application.
 // Product Intelligence is loaded explicitly by index.html, so do not load it again here.
