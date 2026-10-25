@@ -156,17 +156,8 @@
     addSectionHints();
   }
 
-  const observer = new MutationObserver(() => {
-    renameNavigation();
-    addSidebarHint();
-    addQuickActions();
-    addTaskBanner();
-    addSectionHints();
-  });
-
   function start() {
     init();
-    observer.observe(document.body, {subtree:true, childList:true});
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
