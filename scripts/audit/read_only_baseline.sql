@@ -20,8 +20,8 @@ SELECT
 SELECT
   current_setting('transaction_read_only') = 'on' AS read_only_transaction_verified;
 
--- Verify required relations. information_schema visibility is checked first so
--- an absent object can be distinguished from a privilege problem where possible.
+-- Verify required relations. Check schema/table privileges before resolving
+-- relation names so restricted audit roles produce a clear diagnostic.
 DO $$
 DECLARE
   required_name text;
@@ -45,6 +45,10 @@ BEGIN
     schema_name := split_part(required_name, '.', 1);
     object_name := split_part(required_name, '.', 2);
 
+    IF NOT has_schema_privilege(current_user, schema_name, 'USAGE') THEN
+      RAISE EXCEPTION 'INSUFFICIENT_PRIVILEGE_OR_VISIBILITY: audit role lacks USAGE on schema %', schema_name;
+    END IF;
+
     IF to_regclass(required_name) IS NULL THEN
       IF EXISTS (
         SELECT 1
@@ -57,6 +61,10 @@ BEGIN
       ELSE
         RAISE EXCEPTION 'REQUIRED_OBJECT_MISSING: required relation % is absent', required_name;
       END IF;
+    END IF;
+
+    IF NOT has_table_privilege(current_user, required_name, 'SELECT') THEN
+      RAISE EXCEPTION 'INSUFFICIENT_PRIVILEGE_OR_VISIBILITY: audit role lacks SELECT on required relation %', required_name;
     END IF;
   END LOOP;
 END
@@ -76,7 +84,7 @@ SELECT
   to_regclass('public.audit_log') AS audit_log_table;
 
 -- Verify the expected Product Intelligence RPC. If PostgreSQL cannot resolve it,
--- distinguish an absent function from a visibility/privilege problem where possible.
+-- distinguish an absent function from a signature/visibility problem where possible.
 DO $$
 BEGIN
   IF to_regprocedure('public.search_dream_city_products(text,integer)') IS NULL THEN
@@ -91,6 +99,10 @@ BEGIN
     ELSE
       RAISE EXCEPTION 'REQUIRED_OBJECT_MISSING: public.search_dream_city_products(text,integer) is absent';
     END IF;
+  END IF;
+
+  IF NOT has_function_privilege(current_user, 'public.search_dream_city_products(text,integer)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'INSUFFICIENT_PRIVILEGE_OR_VISIBILITY: audit role lacks EXECUTE on public.search_dream_city_products(text,integer)';
   END IF;
 END
 $$;
