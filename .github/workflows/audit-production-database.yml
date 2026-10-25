@@ -2,7 +2,6 @@ name: Read-only Supabase production audit
 
 on:
   workflow_dispatch:
-  workflow_call:
 
 permissions:
   contents: read
@@ -16,20 +15,21 @@ jobs:
     name: Verify target and inspect production schema
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment: production-readonly-audit
     env:
       EXPECTED_PROJECT_REF: nohdgmylncjtdymfshfy
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Verify required secrets and exact project
         shell: bash
         run: |
           set -euo pipefail
           if [[ -z "${SUPABASE_URL:-}" || -z "${SUPABASE_DB_URL:-}" ]]; then
-            echo "::error::Add repository Actions secrets SUPABASE_URL and SUPABASE_DB_URL before running this workflow."
+            echo "::error::Configure the protected production-readonly-audit environment with SUPABASE_URL and SUPABASE_DB_URL before running this workflow."
             exit 1
           fi
           actual_ref="$(python -c 'import os, urllib.parse; print(urllib.parse.urlparse(os.environ["SUPABASE_URL"]).hostname.split(".")[0])')"
@@ -44,16 +44,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes postgresql-client
 
-      - name: Run read-only audit
+      - name: Run read-only baseline audit
         shell: bash
         run: |
           set -euo pipefail
           set +x
-          psql "$SUPABASE_DB_URL" --no-psqlrc --set ON_ERROR_STOP=1 --file scripts/audit-production.sql 2>&1 | tee production-audit.txt
+          psql "$SUPABASE_DB_URL" --no-psqlrc --set ON_ERROR_STOP=1 --file scripts/audit/read_only_baseline.sql 2>&1 | tee production-audit.txt
 
       - name: Upload audit report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: dream-city-production-read-only-audit
           path: production-audit.txt
