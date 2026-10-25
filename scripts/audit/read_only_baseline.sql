@@ -43,20 +43,6 @@ WHERE n.nspname = 'public'
 ORDER BY c.relname;
 
 SELECT
-  COUNT(*) FILTER (WHERE to_regclass('public.products') IS NOT NULL) AS products,
-  COUNT(*) FILTER (WHERE to_regclass('public.categories') IS NOT NULL) AS categories,
-  COUNT(*) FILTER (WHERE to_regclass('public.suppliers') IS NOT NULL) AS suppliers,
-  COUNT(*) FILTER (WHERE to_regclass('public.inventory_movements') IS NOT NULL) AS inventory_movements,
-  COUNT(*) FILTER (WHERE to_regclass('public.sales') IS NOT NULL) AS sales,
-  COUNT(*) FILTER (WHERE to_regclass('public.sale_items') IS NOT NULL) AS sale_items,
-  COUNT(*) FILTER (WHERE to_regclass('public.purchase_orders') IS NOT NULL) AS purchase_orders,
-  COUNT(*) FILTER (WHERE to_regclass('public.goods_receipts') IS NOT NULL) AS goods_receipts,
-  COUNT(*) FILTER (WHERE to_regclass('public.journals') IS NOT NULL) AS journals,
-  COUNT(*) FILTER (WHERE to_regclass('public.journal_lines') IS NOT NULL) AS journal_lines,
-  COUNT(*) FILTER (WHERE to_regclass('public.audit_log') IS NOT NULL) AS audit_log
-FROM generate_series(1, 1) AS baseline;
-
-SELECT
   CASE WHEN to_regclass('public.products') IS NOT NULL THEN (SELECT COUNT(*) FROM public.products) ELSE NULL END AS products,
   CASE WHEN to_regclass('public.categories') IS NOT NULL THEN (SELECT COUNT(*) FROM public.categories) ELSE NULL END AS categories,
   CASE WHEN to_regclass('public.suppliers') IS NOT NULL THEN (SELECT COUNT(*) FROM public.suppliers) ELSE NULL END AS suppliers,
