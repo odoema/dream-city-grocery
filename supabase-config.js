@@ -2,8 +2,29 @@
 // This is a publishable public key; never use a service_role/secret key here.
 window.DREAM_CITY_SUPABASE_CONFIG = {
   url: 'https://nohdgmylncjtdymfshfy.supabase.co',
-  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5vaGRnbXlsbmNqdGR5bWZzaGZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3OTY5NTksImV4cCI6MjEwODM3Mjk1OX0.ZMwnchFy93tGZJbI2lQY66Oh0bKaHKvhNhthFcjZkwk'
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5vaGRnbXlsbmNqdGR5bWZzaGZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3OTY5NTksImV4cCI6MjEwODM3Mjk1OX0.ZMwnchFy93lQY66Oh0bKaHKvhNhthFcjZkwk'
 };
+
+// Login/session stabilization: keep the dashboard hidden until app.js has
+// resolved the current Supabase session. app.js then owns the final visibility
+// state through the existing setSignedIn()/showView() logic.
+(function () {
+  var style = document.createElement('style');
+  style.id = 'dream-city-auth-boot';
+  style.textContent = '#dashboard-view{display:none!important}';
+  document.head.appendChild(style);
+
+  function release() {
+    var auth = document.getElementById('auth-panel');
+    var dashboard = document.getElementById('dashboard-view');
+    if ((auth && auth.classList.contains('hidden')) || (dashboard && dashboard.classList.contains('hidden'))) {
+      style.remove();
+      return;
+    }
+    setTimeout(release, 50);
+  }
+  setTimeout(release, 0);
+})();
 
 // app.js expects window.supabase before it starts. Use the browser UMD build,
 // not the package root, which is not guaranteed to expose a window global.
