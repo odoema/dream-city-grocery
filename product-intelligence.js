@@ -5,15 +5,6 @@
   let client = null;
   const esc = v => String(v ?? '').replace(/[&<>\"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]));
 
-  function loadUxRefresh(){
-    if(document.getElementById('dream-city-ux-refresh-script')) return;
-    const s=document.createElement('script');
-    s.id='dream-city-ux-refresh-script';
-    s.src='ux-refresh.js';
-    s.defer=true;
-    document.head.appendChild(s);
-  }
-
   function getClient(){
     if(client) return client;
     if(!cfg.url || !cfg.anonKey || !window.supabase) return null;
@@ -70,7 +61,6 @@
     run();
   }
 
-  loadUxRefresh();
   styles();
   const mo=new MutationObserver(mount);
   mo.observe(document.body,{subtree:true,childList:true});
