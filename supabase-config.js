@@ -27,6 +27,12 @@ setTimeout(function () {
         intel.src = 'product-intelligence.js?v=1';
         intel.defer = true;
         document.head.appendChild(intel);
+        intel.onload = function () {
+          var posCatalogue = document.createElement('script');
+          posCatalogue.src = 'pos-catalogue.js?v=1';
+          posCatalogue.defer = true;
+          document.head.appendChild(posCatalogue);
+        };
       };
     };
   };
