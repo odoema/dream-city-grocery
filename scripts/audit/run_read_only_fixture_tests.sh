@@ -14,7 +14,7 @@ mkdir -p "$ARTIFACT_DIR"
 export PGHOST PGPORT PGDATABASE PGUSER PGPASSWORD
 
 ADMIN=(psql --no-psqlrc --set=ON_ERROR_STOP=1)
-AUDIT=(psql --no-psqlrc --set=ON_ERROR_STOP=1 --username=audit_runner)
+AUDIT=(env PGPASSWORD=audit_runner_password psql --no-psqlrc --set=ON_ERROR_STOP=1 --username=audit_runner)
 
 log() { printf '\n== %s ==\n' "$1"; }
 fail() { echo "FAIL: $*" >&2; exit 1; }
@@ -68,7 +68,7 @@ SQL
 
 run_baseline() {
   local output_file="$1"
-  "${AUDIT[@]} --file="$SQL_FILE"" >"$output_file" 2>&1
+  "${AUDIT[@]}" --file="$SQL_FILE" >"$output_file" 2>&1
 }
 
 expect_failure() {
@@ -98,10 +98,10 @@ setup_fixture
 happy="$ARTIFACT_DIR/happy-path.log"
 run_baseline "$happy"
 cat "$happy"
-grep -Fq "read_only_transaction_verified" "$happy" || fail "happy path missing read-only verification output"
+grep -A1 -F "read_only_transaction_verified" "$happy" | grep -Fq "t" || fail "happy path did not verify read-only transaction as true"
 grep -Fq "product_intelligence_rpc" "$happy" || fail "happy path missing RPC verification output"
 expected_counts='2|2|2|2|2|2|2|2|2|2|2'
-actual_counts="$("${AUDIT[@]} -Atc "SELECT (SELECT count(*) FROM public.products),(SELECT count(*) FROM public.categories),(SELECT count(*) FROM public.suppliers),(SELECT count(*) FROM public.inventory_movements),(SELECT count(*) FROM public.sales),(SELECT count(*) FROM public.sale_items),(SELECT count(*) FROM public.purchase_orders),(SELECT count(*) FROM public.goods_receipts),(SELECT count(*) FROM public.journals),(SELECT count(*) FROM public.journal_lines),(SELECT count(*) FROM public.audit_log);" )"
+actual_counts="$("${AUDIT[@]}" -Atc "SELECT (SELECT count(*) FROM public.products),(SELECT count(*) FROM public.categories),(SELECT count(*) FROM public.suppliers),(SELECT count(*) FROM public.inventory_movements),(SELECT count(*) FROM public.sales),(SELECT count(*) FROM public.sale_items),(SELECT count(*) FROM public.purchase_orders),(SELECT count(*) FROM public.goods_receipts),(SELECT count(*) FROM public.journals),(SELECT count(*) FROM public.journal_lines),(SELECT count(*) FROM public.audit_log);")"
 [[ "$actual_counts" == "$expected_counts" ]] || fail "fixture counts changed unexpectedly: $actual_counts"
 echo "PASS: baseline completed and all 11 aggregate counts remain 2"
 
@@ -110,7 +110,7 @@ setup_fixture
 "${ADMIN[@]}" -c "DROP TABLE public.products;"
 expect_failure "missing-table" "REQUIRED_OBJECT_MISSING: required relation public.products is absent" bash -c "PGHOST='$PGHOST' PGPORT='$PGPORT' PGDATABASE='$PGDATABASE' PGUSER=audit_runner PGPASSWORD=audit_runner_password psql --no-psqlrc --set=ON_ERROR_STOP=1 --file='$SQL_FILE'"
 
-log "3. Required relation is absent (view/relation coverage)"
+log "3. Required relation is absent"
 setup_fixture
 "${ADMIN[@]}" -c "DROP TABLE public.categories;"
 expect_failure "missing-relation" "REQUIRED_OBJECT_MISSING: required relation public.categories is absent" bash -c "PGHOST='$PGHOST' PGPORT='$PGPORT' PGDATABASE='$PGDATABASE' PGUSER=audit_runner PGPASSWORD=audit_runner_password psql --no-psqlrc --set=ON_ERROR_STOP=1 --file='$SQL_FILE'"
@@ -132,7 +132,7 @@ expect_failure "restricted-visibility" "INSUFFICIENT_PRIVILEGE_OR_VISIBILITY: re
 
 log "7. Read-only transaction rejects deliberate write"
 setup_fixture
-before="$("${AUDIT[@]} -Atc "SELECT count(*) FROM public.products;" )"
+before="$("${AUDIT[@]}" -Atc "SELECT count(*) FROM public.products;")"
 write_log="$ARTIFACT_DIR/read-only-write.log"
 set +e
 "${AUDIT[@]} -c "BEGIN TRANSACTION READ ONLY; INSERT INTO public.products(id, fixture_value) VALUES (999, 'must-not-write');" >"$write_log" 2>&1
@@ -141,13 +141,13 @@ set -e
 cat "$write_log"
 [[ $write_status -ne 0 ]] || fail "deliberate write unexpectedly succeeded"
 grep -Fq "cannot execute INSERT in a read-only transaction" "$write_log" || fail "read-only write rejection diagnostic missing"
-after="$("${AUDIT[@]} -Atc "SELECT count(*) FROM public.products;" )"
+after="$("${AUDIT[@]}" -Atc "SELECT count(*) FROM public.products;")"
 [[ "$before" == "$after" ]] || fail "fixture changed after rejected write: before=$before after=$after"
 echo "PASS: write rejected and fixture remained unchanged"
 
 log "8. Final fixture integrity"
 setup_fixture
-final_counts="$("${AUDIT[@]} -Atc "SELECT (SELECT count(*) FROM public.products),(SELECT count(*) FROM public.categories),(SELECT count(*) FROM public.suppliers),(SELECT count(*) FROM public.inventory_movements),(SELECT count(*) FROM public.sales),(SELECT count(*) FROM public.sale_items),(SELECT count(*) FROM public.purchase_orders),(SELECT count(*) FROM public.goods_receipts),(SELECT count(*) FROM public.journals),(SELECT count(*) FROM public.journal_lines),(SELECT count(*) FROM public.audit_log);" )"
+final_counts="$("${AUDIT[@]}" -Atc "SELECT (SELECT count(*) FROM public.products),(SELECT count(*) FROM public.categories),(SELECT count(*) FROM public.suppliers),(SELECT count(*) FROM public.inventory_movements),(SELECT count(*) FROM public.sales),(SELECT count(*) FROM public.sale_items),(SELECT count(*) FROM public.purchase_orders),(SELECT count(*) FROM public.goods_receipts),(SELECT count(*) FROM public.journals),(SELECT count(*) FROM public.journal_lines),(SELECT count(*) FROM public.audit_log);")"
 [[ "$final_counts" == "$expected_counts" ]] || fail "final fixture integrity failed: $final_counts"
 echo "PASS: synthetic fixture contains expected unchanged data"
 
