@@ -71,6 +71,7 @@ AS $$ SELECT 'fixture'; $$;
 
 GRANT USAGE ON SCHEMA public TO audit_runner;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO audit_runner;
+GRANT EXECUTE ON FUNCTION public.search_dream_city_products(text, integer) TO audit_runner;
 SQL
 }
 
@@ -136,7 +137,7 @@ expect_failure "wrong-rpc-signature" "INSUFFICIENT_PRIVILEGE_OR_VISIBILITY: sear
 log "6. Restricted schema visibility / privilege diagnostic"
 setup_fixture
 "${ADMIN[@]}" -c "REVOKE USAGE ON SCHEMA public FROM audit_runner; REVOKE USAGE ON SCHEMA public FROM PUBLIC;"
-expect_failure "restricted-visibility" "INSUFFICIENT_PRIVILEGE_OR_VISIBILITY: required relation public.products exists but is not visible through to_regclass()" bash -c "PGHOST='$PGHOST' PGPORT='$PGPORT' PGDATABASE='$PGDATABASE' PGUSER=audit_runner PGPASSWORD=audit_runner_password psql --no-psqlrc --set=ON_ERROR_STOP=1 --file='$SQL_FILE'"
+expect_failure "restricted-visibility" "INSUFFICIENT_PRIVILEGE_OR_VISIBILITY: audit role lacks USAGE on schema public" bash -c "PGHOST='$PGHOST' PGPORT='$PGPORT' PGDATABASE='$PGDATABASE' PGUSER=audit_runner PGPASSWORD=audit_runner_password psql --no-psqlrc --set=ON_ERROR_STOP=1 --file='$SQL_FILE'"
 
 log "7. Read-only transaction rejects deliberate write"
 setup_fixture
