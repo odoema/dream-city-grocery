@@ -7,6 +7,12 @@
 
   function getClient(){
     if(client) return client;
+    // Reuse the core application client when available so this optional module
+    // does not create a second GoTrueClient for the same Supabase project.
+    if(window.DREAM_CITY_SUPABASE_CLIENT) {
+      client = window.DREAM_CITY_SUPABASE_CLIENT;
+      return client;
+    }
     if(!cfg.url || !cfg.anonKey || !window.supabase) return null;
     client = window.supabase.createClient(cfg.url,cfg.anonKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
     return client;
@@ -49,12 +55,19 @@
     let timer;
     const run=async()=>{
       const term=input.value.trim();
+      if(!term){
+        results.innerHTML='<div class="dc-pintel-empty">Type a product name, SKU or category to search the reference catalogue.</div>';
+        return;
+      }
       results.innerHTML='<div class="dc-pintel-empty">Searching…</div>';
       try{
         const rows=await search(term);
         if(!rows.length){results.innerHTML='<div class="dc-pintel-empty">No catalogue match found.</div>';return;}
         results.innerHTML='<div class="dc-pintel-results">'+rows.map(r=>`<div class="dc-pintel-item"><div><b>${esc(r.product_name)}</b><div class="dc-pintel-meta">${esc(r.category||'Uncategorised')} · SKU ${esc(r.source_sku||r.source_handle||'—')}</div></div><div class="dc-pintel-price">UGX ${Number(r.source_price||0).toLocaleString('en-UG')}</div></div>`).join('')+'</div>';
-      }catch(e){console.error(e);results.innerHTML='<div class="dc-pintel-empty">Catalogue intelligence is ready in the database; run the product-intelligence migration to activate search.</div>';}
+      }catch(e){
+        console.error(e);
+        results.innerHTML='<div class="dc-pintel-empty">Catalogue search is unavailable until the product-intelligence database function is deployed.</div>';
+      }
     };
     btn.onclick=run;
     input.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(run,220);});
