@@ -106,9 +106,11 @@
         <span class="dc-pos-state ${stateClass}">${esc(state)}${p&&stock>=0?' · '+stock+' left':''}</span>
       </button>`;
     }).join('');
-    host.querySelector('.dc-pos-grid').innerHTML=cards||'<div class="dc-pintel-empty">No products match this search.</div>';
-    host.querySelector('.dc-pos-count').textContent=rows.length+' of '+legacy.length+' catalogue items';
-    host.querySelectorAll('.dc-pos-card[data-dc-live-id]').forEach(btn=>btn.addEventListener('click',()=>{
+    const gridHost=host.querySelector('.dc-pos-grid');
+    const count=host.querySelector('.dc-pos-count');
+    if(gridHost) gridHost.innerHTML=cards||'<div class="dc-pintel-empty">No products match this search.</div>';
+    if(count) count.textContent=rows.length+' of '+legacy.length+' catalogue items';
+    if(gridHost) gridHost.querySelectorAll('.dc-pos-card[data-dc-live-id]').forEach(btn=>btn.addEventListener('click',()=>{
       const id=btn.dataset.dcLiveId;
       const engine=document.querySelector('#product-grid [data-product="'+CSS.escape(id)+'"]');
       if(engine && !engine.disabled) engine.click();
@@ -140,13 +142,18 @@
     }
     const depts=['All',...Array.from(new Set(legacy.map(departmentOf))).sort()];
     const deptHost=document.querySelector('#dc-pos-catalogue .dc-pos-departments');
-    deptHost.innerHTML=depts.map(d=>`<button type="button" class="dc-pos-dept ${d===activeDepartment?'active':''}" data-dc-dept="${esc(d)}">${esc(d)}</button>`).join('');
-    deptHost.querySelectorAll('[data-dc-dept]').forEach(b=>b.onclick=()=>{activeDepartment=b.dataset.dcDept;render();mount();});
+    if(deptHost){
+      const next=depts.map(d=>`<button type="button" class="dc-pos-dept ${d===activeDepartment?'active':''}" data-dc-dept="${esc(d)}">${esc(d)}</button>`).join('');
+      if(deptHost.innerHTML!==next) deptHost.innerHTML=next;
+      deptHost.querySelectorAll('[data-dc-dept]').forEach(b=>b.onclick=()=>{activeDepartment=b.dataset.dcDept;render();});
+    }
     render();
   }
 
   styles();
-  const mo=new MutationObserver(()=>mount());
-  mo.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
-  setTimeout(()=>mount(),1200);
+  document.addEventListener('click',event=>{
+    const nav=event.target.closest?.('.nav[data-view="pos"]');
+    if(nav) setTimeout(mount,0);
+  });
+  setTimeout(mount,1200);
 })();
