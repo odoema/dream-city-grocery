@@ -135,7 +135,7 @@ setup_fixture
 before="$("${AUDIT[@]}" -Atc "SELECT count(*) FROM public.products;")"
 write_log="$ARTIFACT_DIR/read-only-write.log"
 set +e
-"${AUDIT[@]} -c "BEGIN TRANSACTION READ ONLY; INSERT INTO public.products(id, fixture_value) VALUES (999, 'must-not-write');" >"$write_log" 2>&1
+"${AUDIT[@]}" -c "BEGIN TRANSACTION READ ONLY; INSERT INTO public.products(id, fixture_value) VALUES (999, 'must-not-write');" >"$write_log" 2>&1
 write_status=$?
 set -e
 cat "$write_log"
