@@ -5,9 +5,8 @@ window.DREAM_CITY_SUPABASE_CONFIG = {
   anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkb2hnbXlsbmNqdGR5bWZzaGZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI3OTY5NTksImV4cCI6MjEwODM3Mjk1OX0.ZMwnchFy93tGZJbI2lQY66Oh0bKaHKvhNhthFcjZkwk'
 };
 
-// Load the usability layers after the core application. The existing application logic
-// remains the source of truth; these layers simplify the workflow without replacing
-// the protected database transactions.
+// Load the usability and intelligence layers after the core application.
+// The existing application/database remain the source of truth.
 setTimeout(function () {
   var simple = document.createElement('script');
   simple.src = 'simple-workflows-v2.js?v=2';
@@ -23,6 +22,12 @@ setTimeout(function () {
       smart.src = 'smart-purchasing.js?v=1';
       smart.defer = true;
       document.head.appendChild(smart);
+      smart.onload = function () {
+        var intel = document.createElement('script');
+        intel.src = 'product-intelligence.js?v=1';
+        intel.defer = true;
+        document.head.appendChild(intel);
+      };
     };
   };
 }, 0);
