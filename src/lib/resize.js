@@ -2,7 +2,7 @@
 // Double-click a border to return it to the default size.
 
 const KEY = 'ui.sizes.v1';
-const DEFAULTS = { '--sidebar-w': '236px', '--cart-w': '380px', '--cart-split': '50%' };
+const DEFAULTS = { '--sidebar-w': '264px', '--cart-w': '380px', '--cart-split': '50%' };
 
 function load() { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch { return {}; } }
 function save(sizes) { try { localStorage.setItem(KEY, JSON.stringify(sizes)); } catch { /* private mode */ } }
