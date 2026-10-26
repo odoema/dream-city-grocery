@@ -114,6 +114,7 @@ export const NAV = [
   { path: 'products', label: 'Products', icon: '▦', roles: null },
   { path: 'customers', label: 'Customers', icon: '☺', roles: null },
   { path: 'buy', label: 'Buy', icon: '⇩', roles: null },
+  { path: 'inventory', label: 'Inventory', icon: '▣', roles: ['owner', 'manager', 'accountant'] },
   { path: 'count', label: 'Count stock', icon: '✓', roles: ['owner', 'manager', 'accountant'] },
   { path: 'reports', label: 'Reports', icon: '▤', roles: null },
   { path: 'accounts', label: 'Accounts', icon: '₿', roles: ['owner', 'manager', 'accountant'] },
