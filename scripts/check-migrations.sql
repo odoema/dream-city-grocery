@@ -14,6 +14,7 @@ from (values
   ('20261025000600_loyverse_legacy_product_dictionary.sql', to_regclass('public.dream_city_legacy_product_dictionary') is not null),
   ('20261025000650_loyverse_product_manager.sql',       exists(select 1 from information_schema.columns where table_schema = 'public' and table_name = 'products' and column_name = 'track_stock')),
   ('20261025001000_activate_product_intelligence_search.sql', to_regprocedure('public.search_dream_city_products(text,integer)') is not null),
-  ('20261026000100_white_label_platform.sql',           to_regclass('public.store_settings') is not null and to_regprocedure('public.get_customer_statement(uuid)') is not null)
+  ('20261026000100_white_label_platform.sql',           to_regclass('public.store_settings') is not null and to_regprocedure('public.get_customer_statement(uuid)') is not null),
+  ('20261027000100_inventory_intelligence.sql',         to_regprocedure('public.get_inventory_intelligence(integer)') is not null)
 ) as m(file, applied)
 order by m.file;
