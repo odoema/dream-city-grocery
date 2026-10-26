@@ -2,6 +2,7 @@ import { h, clear, table, debounce } from '../lib/dom.js';
 import { db, rpc, run } from '../lib/supabase.js';
 import { money, num, dateTime } from '../lib/format.js';
 import { pageHeader, card, toast, showError, badge, stat, withBusy, confirmDialog, formModal, loading } from '../lib/ui.js';
+import { printDocument, raw } from '../lib/documents.js';
 
 export async function render(root) {
   const host = h('div');
@@ -115,13 +116,24 @@ export async function render(root) {
       } catch (e) { showError(e); }
     }));
 
+    function printSheet() {
+      printDocument({
+        title: 'Stock count sheet', number: session.session_number, date: dateTime(session.started_at),
+        boxes: [{ heading: 'Instructions', html: '<div>Count every item on the shelf and in the store. Write the number in <b>Counted</b>. Enter the counts in the app, then Finish &amp; post.</div>' },
+                { heading: 'Counted by', html: '<div>Name: ____________________<br><br>Area / shelf: ______________</div>' }],
+        columns: [{ label: '#' }, { label: 'Product' }, { label: 'SKU' }, { label: 'Unit' }, { label: 'Counted', right: true }],
+        rows: items.map((i, n) => [n + 1, i.products?.name || '', i.products?.sku || '', i.products?.unit || '', raw(i.counted_quantity !== null ? num(i.counted_quantity) : '__________')]),
+        signatures: ['Counted by', 'Checked by', 'Approved by']
+      });
+    }
+
     search.addEventListener('input', debounce(draw, 150));
     filter.addEventListener('change', () => { show = filter.value; draw(); });
 
     clear(host,
       h('div', { class: 'notice' }, h('div', null, h('b', null, session.session_number), ' started ', dateTime(session.started_at), '. Type each count and press Enter — it saves straight away.')),
       stats,
-      card(h('div', { class: 'toolbar' }, search, filter), listHost),
+      card(h('div', { class: 'toolbar' }, search, filter, h('button', { class: 'secondary', onclick: () => printSheet() }, 'Print count sheet')), listHost),
       h('div', { class: 'row end sticky-actions' },
         h('button', { class: 'secondary', onclick: e => withBusy(e.currentTarget, async () => {
           if (!(await confirmDialog({ title: 'Cancel this count?', message: 'Nothing will change in stock or the books. You can start a fresh count afterwards.', confirmLabel: 'Cancel count', danger: true }))) return;
