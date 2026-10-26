@@ -1,6 +1,6 @@
 /* POS usability refinements. Kept separate so existing views remain untouched. */
 
-/* Restore the base catalogue presentation that was lost from styles.css. */
+/* Catalogue */
 .chips { display:flex; gap:.35rem; overflow:auto; padding:.15rem 0 .4rem; margin-bottom:.6rem; }
 .chip { border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:999px; padding:.4rem .7rem; white-space:nowrap; }
 .chip.active { background:var(--brand); border-color:var(--brand); color:var(--brand-ink); }
@@ -16,56 +16,148 @@
 .p-stock { font-size:.78rem; font-weight:650; }
 .p-stock.ok { color:var(--ok); } .p-stock.warn { color:var(--warn); } .p-stock.bad { color:var(--bad); }
 
-/* ------------------------------------------------------------------
-   SUPERMARKET CASH-REGISTER MODE
-   Stable two-zone desktop register:
-   1. Product catalogue
-   2. Current sale / basket + checkout in one proper tall register
------------------------------------------------------------------- */
-@media (min-width: 861px) {
-  main { max-width: 1600px; }
-  .pos { grid-template-columns:minmax(0,1fr) minmax(460px,500px); gap:1rem; min-height:calc(100vh - 3rem); }
-  .pos-products { min-height:calc(100vh - 3rem); }
-  .pos-cart { position:sticky; top:.75rem; height:calc(100vh - 1.5rem); min-height:0; max-height:none; padding:1rem; overflow:hidden; }
-  .pos-cart .card-head { flex:0 0 auto; margin-bottom:.8rem; padding-bottom:.65rem; border-bottom:2px solid var(--orange); }
-  .pos-cart .card-head h2 { font-size:1.25rem; }
-  .cart-lines { flex:1 1 auto; min-height:0; overflow-y:auto; padding:0 .25rem 0 0; }
-  .cart-line { grid-template-columns:minmax(0,1fr) auto; gap:.45rem .75rem; padding:.9rem .15rem; }
-  .cl-main b { font-size:1rem; } .cl-main small { font-size:.82rem; }
-  .qty { gap:.3rem; } .qty button { width:42px; height:42px; font-size:1.25rem; } .qty input { width:68px; min-height:42px; font-weight:700; }
+/* ================================================================
+   TRUE THREE-ZONE SUPERMARKET REGISTER
+   Products | Current Sale | Checkout
+
+   Current Sale is now a real sibling panel in the DOM, not a nested
+   grid sharing height with checkout. This prevents the basket from
+   disappearing/collapsing and gives it its own scrollbar.
+================================================================ */
+@media (min-width:861px) {
+  main { max-width:1600px; }
+  .pos {
+    display:grid;
+    grid-template-columns:minmax(300px,.95fr) minmax(360px,1.2fr) minmax(300px,.9fr);
+    gap:1rem;
+    min-height:calc(100vh - 3rem);
+    align-items:stretch;
+  }
+
+  .pos-products,
+  .pos-sale,
+  .pos-checkout {
+    min-width:0;
+    min-height:0;
+    height:calc(100vh - 3rem);
+    margin-bottom:0;
+    overflow:hidden;
+  }
+
+  .pos-products {
+    display:flex;
+    flex-direction:column;
+  }
+  .pos-products .product-grid {
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    padding-right:.25rem;
+  }
+
+  /* Zone 2: Current Sale is deliberately large and independent. */
+  .pos-sale {
+    display:flex;
+    flex-direction:column;
+  }
+  .pos-sale .card-head {
+    flex:0 0 auto;
+    margin-bottom:.7rem;
+    padding-bottom:.65rem;
+    border-bottom:2px solid var(--orange);
+  }
+  .pos-sale .card-head h2 { font-size:1.35rem; }
+  .pos-sale .cart-lines {
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding:0 .45rem 0 0;
+  }
+  .pos-sale .cart-lines::-webkit-scrollbar,
+  .pos-products .product-grid::-webkit-scrollbar,
+  .pos-checkout::-webkit-scrollbar { width:11px; }
+  .pos-sale .cart-lines::-webkit-scrollbar-thumb,
+  .pos-products .product-grid::-webkit-scrollbar-thumb,
+  .pos-checkout::-webkit-scrollbar-thumb { background:var(--brand); border-radius:10px; }
+
+  .cart-line {
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:.5rem .7rem;
+    padding:1rem .15rem;
+    border-bottom:1px solid var(--line);
+  }
+  .cl-main b { font-size:1.05rem; }
+  .cl-main small { font-size:.82rem; }
+  .qty { gap:.3rem; }
+  .qty button { width:42px; height:42px; font-size:1.25rem; }
+  .qty input { width:68px; min-height:42px; font-weight:700; }
   .cl-total { font-size:1.02rem; }
-  .cart-form { flex:0 0 auto; padding:.8rem 0 .55rem; gap:.5rem; border-top:1px solid var(--line); }
-  .segmented { grid-template-columns:repeat(5,minmax(0,1fr)); gap:.35rem; }
-  .segmented button { min-height:44px; padding:.45rem .25rem; font-size:.78rem; border-radius:9px; }
-  .customer-row,.discount-row,.tender-row { margin-top:.05rem; }
-  .customer-row { flex-direction:row; align-items:center; gap:.5rem; }
-  .customer-row > label { flex:0 0 72px; }
-  .customer-row .with-action { flex:1; }
-  .discount-row { display:grid; grid-template-columns:72px minmax(0,1fr); align-items:center; gap:.5rem; }
-  .tender-row { grid-template-columns:minmax(0,1fr) auto; }
-  .cart-totals { flex:0 0 auto; margin:.2rem 0 .75rem; padding:.65rem .1rem 0; border-top:1px solid var(--line); }
+
+  /* Zone 3: Checkout is always visible beside Current Sale. */
+  .pos-checkout {
+    display:flex;
+    flex-direction:column;
+    overflow-y:auto;
+    padding:1rem;
+  }
+  .pos-checkout .cart-form {
+    flex:0 0 auto;
+    padding:0 0 .7rem;
+    gap:.65rem;
+    border:0;
+  }
+  .pos-checkout .cart-form > label:first-child { font-size:1.05rem; font-weight:800; }
+  .segmented { grid-template-columns:repeat(2,minmax(0,1fr)); gap:.5rem; }
+  .segmented button { min-height:46px; padding:.45rem .3rem; font-size:.82rem; border-radius:9px; }
+  .customer-row { flex-direction:column; align-items:stretch; gap:.35rem; }
+  .customer-row > label { flex:0 0 auto; }
+  .customer-row .with-action { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.5rem; }
+  .discount-row { display:grid; grid-template-columns:1fr; gap:.35rem; }
+  .tender-row { grid-template-columns:1fr; gap:.45rem; }
+  .pos-checkout .cart-totals {
+    flex:0 0 auto;
+    margin:.3rem 0 .75rem;
+    padding:.7rem 0 .4rem;
+    border-top:1px solid var(--line);
+  }
   .cart-totals .grand { font-size:1.55rem; padding-top:.5rem; }
-  .pos-cart > .primary.big { flex:0 0 auto; min-height:58px; font-size:1.15rem; border-radius:10px; margin-top:.1rem; }
+  .pos-checkout > .primary.big {
+    flex:0 0 auto;
+    min-height:60px;
+    font-size:1.15rem;
+    border-radius:10px;
+    margin-top:0;
+  }
 }
 
 @media (min-width:861px) and (max-width:1200px) {
-  .pos { grid-template-columns:minmax(0,1fr) 430px; }
-  .segmented button { font-size:.72rem; }
-  .product-grid { grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); }
+  .pos { grid-template-columns:minmax(230px,.8fr) minmax(320px,1.1fr) minmax(270px,.9fr); gap:.75rem; }
+  .segmented button { font-size:.74rem; }
+  .product-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 
+/* Mobile/tablet: stack the three panels in a logical cashier order. */
 @media (max-width:860px) {
   .product-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:.6rem; }
   .product-card { min-height:148px; }
-  .pos-cart { min-height:0; }
-  .cart-lines { min-height:220px; }
-  .segmented { grid-template-columns:repeat(3,1fr); }
+  .pos { display:grid; grid-template-columns:1fr; gap:1rem; }
+  .pos-products { min-height:60vh; }
+  .pos-sale,
+  .pos-checkout { height:auto; min-height:0; margin-bottom:0; }
+  .pos-products .product-grid { max-height:55vh; overflow-y:auto; }
+  .pos-sale { display:flex; flex-direction:column; }
+  .pos-sale .cart-lines { min-height:300px; max-height:52vh; overflow-y:auto; }
+  .pos-checkout { overflow:visible; }
+  .segmented { grid-template-columns:repeat(3,1fr); gap:.4rem; }
+  .segmented button { min-height:46px; font-size:.78rem; }
   .receipt-actions { justify-content:flex-start; }
 }
 
 @media (max-width:430px) {
   .product-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .product-card { min-height:138px; padding:.65rem; }
+  .pos-sale .cart-lines { min-height:280px; max-height:48vh; }
 }
 
 .receipt-actions { display:inline-flex; justify-content:flex-end; align-items:center; gap:.4rem; flex-wrap:nowrap; }
