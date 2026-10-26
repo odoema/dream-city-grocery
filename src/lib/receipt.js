@@ -18,7 +18,7 @@ export function receiptHtml(r) {
   .c { text-align: center; } .r { text-align: right; white-space: nowrap; } .logo { display:block; max-width: 40%; max-height: 60px; margin: 0 auto; }
   table { width: 100%; border-collapse: collapse; } td { padding: 3px 0; vertical-align: top; }
   hr { border: 0; border-top: 1px dashed #000; margin: 6px 0; } .tot td { font-weight: bold; font-size: 14px; }
-  small { color: #222; } .void { text-align:center; font-weight:bold; border: 2px solid #000; padding: 3px; margin: 6px 0; }
+  small { color: #000; } .void { text-align:center; font-weight:bold; border: 2px solid #000; padding: 3px; margin: 6px 0; }
 </style></head><body>
 ${logo}<h1>${esc(s.business_name || 'Receipt')}</h1>
 ${s.tagline ? `<div class="c">${esc(s.tagline)}</div>` : ''}
