@@ -380,7 +380,7 @@ async function labels(body) {
     if (!lines.length) return toast('Add at least one product.', 'error');
     const all = lines.flatMap(l => Array.from({ length: l.copies }, () => labelHtml(l.p))).join('');
     const css = {
-      a4: '@page{size:A4;margin:8mm}.sheet{display:grid;grid-template-columns:repeat(3,1fr);gap:0}.lbl{height:33.9mm;padding:2mm 3mm;border:1px dashed #ccc}',
+      a4: '@page{size:A4;margin:8mm}.sheet{display:grid;grid-template-columns:repeat(3,1fr);gap:0}.lbl{height:33.9mm;padding:2mm 3mm;border:1px dashed #16376A}',
       '50x30': '@page{size:50mm 30mm;margin:0}.lbl{width:50mm;height:30mm;padding:1.5mm 2mm;page-break-after:always}',
       '40x25': '@page{size:40mm 25mm;margin:0}.lbl{width:40mm;height:25mm;padding:1mm 1.5mm;page-break-after:always}.n{font-size:8px}.p{font-size:10px}'
     }[size.value];
