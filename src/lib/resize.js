@@ -2,13 +2,26 @@
 // Double-click a border to return it to the default size.
 
 const KEY = 'ui.sizes.v1';
-const DEFAULTS = { '--sidebar-w': '264px', '--cart-w': '380px', '--cart-split': '50%' };
+const LOCK_KEY = 'ui.layoutLocked';
+const DEFAULTS = { '--cart-w': '380px', '--cart-split': '50%' };
+
+// Layout is locked by default; only the owner can unlock it (Settings → This till's layout).
+export function isLayoutLocked() { try { return localStorage.getItem(LOCK_KEY) !== 'no'; } catch { return true; } }
+export function setLayoutLocked(locked) {
+  try { localStorage.setItem(LOCK_KEY, locked ? 'yes' : 'no'); } catch { /* private mode */ }
+  document.body.classList.toggle('layout-locked', locked);
+}
+export function resetLayout() {
+  try { localStorage.removeItem(KEY); } catch { /* ignore */ }
+  for (const name of Object.keys(DEFAULTS)) document.documentElement.style.removeProperty(name);
+}
 
 function load() { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch { return {}; } }
 function save(sizes) { try { localStorage.setItem(KEY, JSON.stringify(sizes)); } catch { /* private mode */ } }
 
 // Apply saved sizes once at start-up.
 export function applySavedSizes() {
+  document.body.classList.toggle('layout-locked', isLayoutLocked());
   const sizes = load();
   for (const [name, value] of Object.entries(sizes)) if (name in DEFAULTS) document.documentElement.style.setProperty(name, value);
 }
@@ -31,7 +44,7 @@ export function makeResizer(handle, { name, axis = 'x', min, max, compute, unit 
   const persist = value => { const s = load(); s[name] = value; save(s); };
 
   handle.addEventListener('pointerdown', e => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || isLayoutLocked()) return;
     e.preventDefault();
     handle.setPointerCapture(e.pointerId);
     document.body.classList.add('resizing', axis === 'x' ? 'resizing-x' : 'resizing-y');
@@ -53,7 +66,7 @@ export function makeResizer(handle, { name, axis = 'x', min, max, compute, unit 
   handle.addEventListener('keydown', e => {
     const back = axis === 'x' ? 'ArrowLeft' : 'ArrowUp';
     const fwd = axis === 'x' ? 'ArrowRight' : 'ArrowDown';
-    if (e.key !== back && e.key !== fwd) return;
+    if ((e.key !== back && e.key !== fwd) || isLayoutLocked()) return;
     e.preventDefault();
     const current = parseFloat(getComputedStyle(root).getPropertyValue(name)) || parseFloat(DEFAULTS[name]);
     const step = unit === '%' ? 2 : 16;
@@ -61,6 +74,7 @@ export function makeResizer(handle, { name, axis = 'x', min, max, compute, unit 
   });
 
   handle.addEventListener('dblclick', () => {
+    if (isLayoutLocked()) return;
     root.style.setProperty(name, DEFAULTS[name]);
     const s = load(); delete s[name]; save(s);
   });
