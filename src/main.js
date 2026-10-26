@@ -1,5 +1,4 @@
 import './styles.css';
-import './pos-overrides.css';
 import { loadConfig } from './lib/config.js';
 import { initClient, db, rpc, run } from './lib/supabase.js';
 import { state, roleLabel } from './lib/state.js';
@@ -20,6 +19,7 @@ async function boot() {
   initClient(config);
   await loadPublicProfile();
 
+  // Never await network work inside the auth callback (supabase-js deadlock).
   db().auth.onAuthStateChange((event, session) => {
     if (event === 'INITIAL_SESSION') return;
     if (event === 'PASSWORD_RECOVERY') { setTimeout(() => renderLogin(app, { recovery: true, onSignedIn }), 0); return; }
