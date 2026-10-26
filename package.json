@@ -1,0 +1,23 @@
+{
+  "name": "grocery-pos",
+  "private": true,
+  "version": "2.0.0",
+  "description": "White-label grocery POS, stock, purchasing and accounting on Supabase.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test tests/*.test.js",
+    "test:db": "node tests/db/flows.mjs",
+    "test:smoke": "npm run build && node tests/smoke.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.81.1",
+    "papaparse": "5.4.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.11",
+    "vite": "6.3.5"
+  }
+}

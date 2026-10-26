@@ -202,7 +202,7 @@ $$;
 create or replace function public.cancel_stocktake(p_session_id uuid)
 returns jsonb
 language plpgsql security definer set search_path = ''
-as $
+as $$
 declare
   v_actor uuid := auth.uid();
   v_role public.staff_role;
@@ -219,7 +219,7 @@ begin
   values(v_actor,'stocktake.cancelled','stocktake_session',p_session_id,jsonb_build_object('session_number',v_session.session_number));
   return jsonb_build_object('id',p_session_id,'status','cancelled');
 end;
-$;
+$$;
 
 revoke all on function public.cancel_stocktake(uuid) from public, anon;
 grant execute on function public.cancel_stocktake(uuid) to authenticated;
