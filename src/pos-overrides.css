@@ -1,6 +1,5 @@
 /* POS usability refinements. Kept separate so existing views remain untouched. */
 
-/* Product catalogue: larger, touch-friendly cards without changing the catalogue logic. */
 .product-grid {
   grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
   gap: .75rem;
@@ -16,153 +15,158 @@
 .p-price { font-size: 1.05rem; }
 .p-stock { font-size: .78rem; }
 
-/* ------------------------------------------------------------------
-   SUPERMARKET CASH-REGISTER MODE
-   The Current Sale becomes a proper tall register panel on desktop.
-   Items get the space; payment/actions stay together at the bottom.
------------------------------------------------------------------- */
-@media (min-width: 861px) {
-  main { max-width: 1600px; }
+/* ================================================================
+   CASH REGISTER / TILL
+   Current Sale is a dedicated register: items get the main space,
+   total is prominent, then payment/customer/tender controls, then
+   one large checkout action.
+================================================================ */
+.pos-cart {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  min-height: calc(100vh - 2rem);
+  max-height: calc(100vh - 2rem);
+  overflow: hidden;
+}
+.pos-cart > .card-head { grid-row: 1; }
+.pos-cart > .cart-lines { grid-row: 2; min-height: 0; overflow-y: auto; }
+.pos-cart > .cart-totals { grid-row: 3; }
+.pos-cart > .cart-form { grid-row: 4; }
+.pos-cart > .primary.big { grid-row: 5; }
 
-  .pos {
-    grid-template-columns: minmax(0, 1fr) minmax(460px, 500px);
-    gap: 1rem;
-    min-height: calc(100vh - 3rem);
-  }
+.pos-cart .card-head {
+  margin-bottom: .7rem;
+  padding-bottom: .65rem;
+  border-bottom: 2px solid var(--orange);
+}
+.pos-cart .card-head h2 { font-size: 1.25rem; }
 
-  .pos-products {
-    min-height: calc(100vh - 3rem);
-  }
+.cart-lines {
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: .25rem;
+}
+.cart-line {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .45rem .75rem;
+  padding: .85rem .15rem;
+}
+.cl-main b { font-size: 1rem; }
+.cl-main small { font-size: .82rem; }
+.qty { gap: .3rem; }
+.qty button { width: 42px; height: 42px; font-size: 1.25rem; }
+.qty input { width: 68px; min-height: 42px; font-weight: 700; }
+.cl-total { font-size: 1.02rem; }
+
+.cart-totals {
+  margin: .55rem 0 .25rem;
+  padding: .65rem .1rem 0;
+  border-top: 1px solid var(--line);
+}
+.cart-totals .grand {
+  font-size: 1.55rem;
+  padding-top: .5rem;
+}
+
+.cart-form {
+  padding: .65rem 0 .55rem;
+  gap: .5rem;
+  border-top: 1px solid var(--line);
+}
+.segmented {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: .35rem;
+}
+.segmented button {
+  min-height: 44px;
+  padding: .45rem .25rem;
+  font-size: .78rem;
+  border-radius: 9px;
+}
+.customer-row {
+  flex-direction: row;
+  align-items: center;
+  gap: .5rem;
+}
+.customer-row > label { flex: 0 0 72px; }
+.customer-row .with-action { flex: 1; }
+.discount-row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+  gap: .5rem;
+}
+.tender-row { grid-template-columns: minmax(0, 1fr) auto; }
+
+.pos-cart > .primary.big {
+  min-height: 58px;
+  font-size: 1.15rem;
+  border-radius: 10px;
+  margin-top: .15rem;
+}
+
+/* Medium desktop: preserve the large till while avoiding crowding. */
+@media (min-width: 861px) and (max-width: 1200px) {
+  .pos { grid-template-columns: minmax(0, 1fr) 430px; }
+  .product-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .segmented button { font-size: .72rem; }
+}
+
+/* Mobile/tablet: make Current Sale a large, usable till panel rather
+   than a short card. Keep the existing product catalogue and routing. */
+@media (max-width: 860px) {
+  .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+  .product-card { min-height: 148px; }
 
   .pos-cart {
-    position: sticky;
-    top: .75rem;
-    height: calc(100vh - 1.5rem);
-    min-height: 0;
+    position: static;
+    width: 100%;
+    min-height: calc(100vh - 7rem);
     max-height: none;
+    margin-top: 1rem;
     padding: 1rem;
     overflow: hidden;
   }
 
-  .pos-cart .card-head {
-    flex: 0 0 auto;
-    margin-bottom: .8rem;
-    padding-bottom: .65rem;
-    border-bottom: 2px solid var(--orange);
-  }
-
-  .pos-cart .card-head h2 { font-size: 1.25rem; }
-
-  /* The sale list owns the large middle area. */
+  .pos-cart .card-head { flex: none; }
   .cart-lines {
-    flex: 1 1 auto;
-    min-height: 0;
+    min-height: 45vh;
+    max-height: 52vh;
     overflow-y: auto;
-    padding: 0 .25rem 0 0;
   }
 
-  .cart-line {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: .45rem .75rem;
-    padding: .9rem .15rem;
-  }
-
-  .cl-main b { font-size: 1rem; }
-  .cl-main small { font-size: .82rem; }
-  .qty { gap: .3rem; }
-  .qty button { width: 42px; height: 42px; font-size: 1.25rem; }
-  .qty input { width: 68px; min-height: 42px; font-weight: 700; }
-  .cl-total { font-size: 1.02rem; }
-
-  /* Keep the register controls visually separate from the item list. */
-  .cart-form {
-    flex: 0 0 auto;
-    padding: .8rem 0 .55rem;
-    gap: .5rem;
-    border-top: 1px solid var(--line);
-  }
-
-  /* Five payment choices fit in one clean register row. */
+  .cart-form { gap: .55rem; }
   .segmented {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: .35rem;
+    grid-template-columns: repeat(3, 1fr);
+    gap: .4rem;
   }
   .segmented button {
-    min-height: 44px;
-    padding: .45rem .25rem;
+    min-height: 46px;
     font-size: .78rem;
-    border-radius: 9px;
   }
-
   .customer-row,
   .discount-row,
-  .tender-row {
-    margin-top: .05rem;
-  }
-
-  .customer-row {
-    flex-direction: row;
-    align-items: center;
-    gap: .5rem;
-  }
-  .customer-row > label { flex: 0 0 72px; }
-  .customer-row .with-action { flex: 1; }
-
-  .discount-row {
-    display: grid;
-    grid-template-columns: 72px minmax(0, 1fr);
-    align-items: center;
-    gap: .5rem;
-  }
-
-  .tender-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .cart-totals {
-    flex: 0 0 auto;
-    margin: .2rem 0 .75rem;
-    padding: .65rem .1rem 0;
-    border-top: 1px solid var(--line);
-  }
-  .cart-totals .grand {
-    font-size: 1.55rem;
-    padding-top: .5rem;
-  }
-
-  /* The main action belongs at the very bottom of the register. */
+  .tender-row { width: 100%; }
+  .cart-totals .grand { font-size: 1.4rem; }
   .pos-cart > .primary.big {
-    flex: 0 0 auto;
-    min-height: 58px;
-    font-size: 1.15rem;
-    border-radius: 10px;
-    margin-top: .1rem;
+    min-height: 60px;
+    font-size: 1.05rem;
   }
-}
 
-/* At medium desktop widths, keep the register large but prevent crowding. */
-@media (min-width: 861px) and (max-width: 1200px) {
-  .pos { grid-template-columns: minmax(0, 1fr) 430px; }
-  .segmented button { font-size: .72rem; }
-  .product-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-}
-
-/* Mobile/tablet: preserve the existing stacked POS experience. */
-@media (max-width: 860px) {
-  .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
-  .product-card { min-height: 148px; }
-  .pos-cart { min-height: 0; }
-  .cart-lines { min-height: 220px; }
-  .segmented { grid-template-columns: repeat(3, 1fr); }
   .receipt-actions { justify-content: flex-start; }
 }
 
 @media (max-width: 430px) {
   .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .product-card { min-height: 138px; padding: .65rem; }
+  .pos-cart { padding: .8rem; }
+  .cart-lines { min-height: 42vh; max-height: 48vh; }
+  .cart-line { padding: .7rem 0; }
+  .qty button { width: 38px; height: 38px; }
+  .qty input { width: 58px; min-height: 38px; }
+  .segmented button { min-height: 44px; font-size: .72rem; }
 }
 
-/* Receipt archive actions stay together and line up cleanly. */
 .receipt-actions {
   display: inline-flex;
   justify-content: flex-end;
