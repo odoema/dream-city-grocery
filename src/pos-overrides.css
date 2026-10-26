@@ -1,6 +1,47 @@
 /* POS usability refinements. Kept separate so existing views remain untouched. */
 
-/* Restore the base catalogue presentation that was lost from styles.css. */
+/* The POS base rules were accidentally removed from styles.css during the rollback. Keep them here so the Sell view is self-contained and stable. */
+.pos { display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:1rem; align-items:start; }
+.pos-products { padding:.9rem; }
+.pos-search { position:sticky; top:0; background:var(--surface); padding-bottom:.5rem; z-index:2; }
+.chips { display:flex; gap:.35rem; overflow-x:auto; padding-bottom:.5rem; }
+.chip { flex:0 0 auto; border:1px solid var(--line); background:var(--surface); border-radius:999px; padding:.35rem .8rem; font-weight:600; font-size:.85rem; color:var(--ink); }
+.chip.active { background:var(--brand); border-color:var(--brand); color:var(--brand-ink); }
+.product-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:.6rem; }
+.product-card { text-align:left; display:flex; flex-direction:column; gap:.2rem; min-height:112px; padding:.7rem; border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--ink); transition:transform .08s,border-color .08s; }
+.product-card:hover:not(:disabled) { border-color:var(--brand); transform:translateY(-1px); }
+.product-card:active:not(:disabled) { transform:scale(.98); }
+.product-card.out { background:var(--surface-2); }
+.p-name { font-weight:650; line-height:1.25; }
+.p-meta { color:var(--muted); font-size:.75rem; }
+.p-price { font-weight:800; margin-top:auto; }
+.p-stock { font-size:.75rem; font-weight:650; }
+.p-stock.ok { color:var(--ok); } .p-stock.warn { color:var(--warn); } .p-stock.bad { color:var(--bad); }
+.pos-cart { position:sticky; top:1rem; display:flex; flex-direction:column; max-height:calc(100vh - 2rem); padding:.9rem; }
+.cart-lines { overflow:auto; flex:1; min-height:120px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+.empty-cart { color:var(--muted); text-align:center; padding:2rem .5rem; }
+.cart-line { display:grid; grid-template-columns:1fr auto; gap:.3rem .6rem; padding:.6rem 0; border-bottom:1px dashed var(--line); }
+.cart-line:last-child { border-bottom:0; }
+.cl-main small { display:block; }
+.cl-total { grid-column:1 / -1; display:flex; justify-content:flex-end; gap:.4rem; align-items:center; font-weight:700; font-variant-numeric:tabular-nums; }
+.cl-total .link { font-weight:600; }
+.qty { display:flex; align-items:center; gap:.2rem; }
+.qty button { width:34px; height:34px; border-radius:8px; border:1px solid var(--line); background:var(--surface); color:var(--ink); font-size:1.1rem; }
+.qty input { width:64px; min-height:34px; text-align:center; padding:.2rem; }
+.cart-form { display:flex; flex-direction:column; gap:.45rem; padding:.7rem 0; }
+.segmented { display:grid; grid-template-columns:repeat(3,1fr); gap:.3rem; }
+.segmented button { min-height:38px; border-radius:8px; border:1px solid var(--line); background:var(--surface); font-weight:600; font-size:.85rem; color:var(--ink); }
+.segmented button.active { background:var(--brand); color:var(--brand-ink); border-color:var(--brand); }
+.customer-row.needed select { border-color:var(--warn); }
+.discount-row,.customer-row { display:flex; flex-direction:column; gap:.25rem; }
+.tender-row { display:grid; grid-template-columns:1fr auto; gap:.5rem; align-items:center; }
+.change-line { font-weight:700; color:var(--ok); white-space:nowrap; }
+.change-line.bad { color:var(--bad); }
+.cart-totals { display:flex; flex-direction:column; gap:.2rem; margin-bottom:.6rem; }
+.cart-totals > div { display:flex; justify-content:space-between; font-variant-numeric:tabular-nums; }
+.cart-totals .grand { font-size:1.25rem; padding-top:.3rem; border-top:1px solid var(--line); }
+
+/* Restore the known-good catalogue presentation. */
 .chips { display:flex; gap:.35rem; overflow:auto; padding:.15rem 0 .4rem; margin-bottom:.6rem; }
 .chip { border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:999px; padding:.4rem .7rem; white-space:nowrap; }
 .chip.active { background:var(--brand); border-color:var(--brand); color:var(--brand-ink); }
@@ -55,9 +96,10 @@
 }
 
 @media (max-width:860px) {
+  .pos { grid-template-columns:1fr; }
   .product-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:.6rem; }
   .product-card { min-height:148px; }
-  .pos-cart { min-height:0; }
+  .pos-cart { position:static; min-height:0; max-height:none; }
   .cart-lines { min-height:220px; }
   .segmented { grid-template-columns:repeat(3,1fr); }
   .receipt-actions { justify-content:flex-start; }
