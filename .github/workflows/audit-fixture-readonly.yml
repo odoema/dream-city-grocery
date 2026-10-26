@@ -1,0 +1,63 @@
+name: Read-only audit fixture tests
+
+on:
+  push:
+    branches:
+      - audit/readonly-production-route
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dream-city-readonly-fixture-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  fixture-tests:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Run disposable PostgreSQL fixture tests
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          PGDATABASE: postgres
+          PGUSER: postgres
+          PGPASSWORD: postgres
+        run: |
+          chmod +x scripts/audit/run_read_only_fixture_tests.sh
+          scripts/audit/run_read_only_fixture_tests.sh
+
+      - name: Upload fixture test evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: dream-city-read-only-fixture-evidence
+          path: artifacts/read-only-fixture/
+          if-no-files-found: error
+          retention-days: 14
