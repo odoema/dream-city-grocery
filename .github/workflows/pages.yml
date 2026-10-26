@@ -1,0 +1,55 @@
+name: Build and deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'scripts/**'
+      - 'supabase/**'
+      - '**.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run test:db
+      - name: Build
+        run: npm run build
+      # White-label: a shop that forks this repo can set repository variables
+      # SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY instead of editing public/config.json.
+      - name: Write config.json from repository variables (optional)
+        if: ${{ vars.SUPABASE_URL != '' && vars.SUPABASE_PUBLISHABLE_KEY != '' }}
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+        run: node -e "require('fs').writeFileSync('dist/config.json', JSON.stringify({supabaseUrl: process.env.SUPABASE_URL, supabaseKey: process.env.SUPABASE_PUBLISHABLE_KEY}, null, 2))"
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
