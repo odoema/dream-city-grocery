@@ -8,6 +8,7 @@ const views = {
   customers: () => import('./views/customers.js'),
   buy: () => import('./views/buy.js'),
   count: () => import('./views/count.js'),
+  inventory: () => import('./views/inventory.js'),
   reports: () => import('./views/reports.js'),
   accounts: () => import('./views/accounts.js'),
   import: () => import('./views/import.js'),
