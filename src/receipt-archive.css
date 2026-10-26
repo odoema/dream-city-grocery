@@ -1,0 +1,11 @@
+.receipt-archive-head { align-items: flex-start; gap: 1rem; }
+.receipt-archive-head h2 { margin-bottom: .15rem; }
+.receipt-archive-head p { margin: 0; }
+.receipt-actions { display: inline-flex; justify-content: flex-end; align-items: center; gap: .4rem; }
+.receipt-actions .primary.small,
+.receipt-actions .secondary.small { min-width: 78px; }
+.receipt-archive-note { margin-top: .75rem; padding: .75rem 0 0; border-top: 1px solid var(--line); color: var(--muted); font-size: .86rem; }
+@media (max-width: 900px) {
+  .receipt-archive-head { align-items: stretch; }
+  .receipt-actions { justify-content: flex-start; }
+}
