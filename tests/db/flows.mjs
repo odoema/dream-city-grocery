@@ -195,3 +195,37 @@ assert.ok(lc.length >= 2);
 const st = await rpc(CASHIER, `select public.get_customer_statement($1) r`, [cust.id]);
 assert.equal(Number(st.r.balance), 9000); assert.ok(st.r.entries.length >= 3);
 console.log('PASS customer list + statement');
+
+// ---------------------------------------------------------------- inventory module
+const soap = await one(`select id, quantity_on_hand q, buying_price c from products where sku='10001'`);
+await expectFail(STRANGER, `select public.adjust_stock('damaged',$1::jsonb,'')`, [JSON.stringify([{ product_id: soap.id, quantity_delta: -1 }])], /not allowed/);
+await expectFail(OWNER, `select public.adjust_stock('damaged',$1::jsonb,'')`, [JSON.stringify([{ product_id: soap.id, quantity_delta: 2 }])], /only remove/);
+await expectFail(OWNER, `select public.adjust_stock('expired',$1::jsonb,'')`, [JSON.stringify([{ product_id: soap.id, quantity_delta: -99999 }])], /Cannot remove more/);
+const adj = await rpc(OWNER, `select public.adjust_stock('damaged',$1::jsonb,'Rats') r`, [JSON.stringify([{ product_id: soap.id, quantity_delta: -2 }])]);
+assert.equal(Number(adj.r.loss), 2 * Number(soap.c));
+const adj2 = await rpc(OWNER, `select public.adjust_stock('correction',$1::jsonb,'Recount') r`, [JSON.stringify([{ product_id: soap.id, new_quantity: Number(soap.q) }])]);
+assert.equal(Number((await one(`select quantity_on_hand q from products where id=$1`, [soap.id])).q), Number(soap.q));
+await balanced(); pass('stock adjustments (remove, set-to, validation) post balanced journals');
+
+const sup = await one(`select id from suppliers limit 1`);
+const ret = await rpc(OWNER, `select public.return_to_supplier($1,$2::jsonb,'credit','RN-1','') r`, [sup.id, JSON.stringify([{ product_id: soap.id, quantity: 1 }])]);
+assert.ok(Number(ret.r.total) > 0);
+await expectFail(OWNER, `select public.return_to_supplier($1,$2::jsonb,'cash')`, [sup.id, JSON.stringify([{ product_id: soap.id, quantity: 99999 }])], /Only/);
+await balanced(); pass('return to supplier');
+
+const nBefore = Number((await one(`select count(*) n from management_notifications where event_type in ('low_stock','out_of_stock')`)).n);
+const cur = Number((await one(`select quantity_on_hand q from products where id=$1`, [soap.id])).q);
+await asUser(OWNER, () => one(`update products set reorder_level = $2 where id=$1 returning id`, [soap.id, cur - 1]));
+await rpc(OWNER, `select public.adjust_stock('lost_stolen',$1::jsonb,'') r`, [JSON.stringify([{ product_id: soap.id, quantity_delta: -1 }])]);
+const nAfter = Number((await one(`select count(*) n from management_notifications where event_type in ('low_stock','out_of_stock')`)).n);
+assert.equal(nAfter, nBefore + 1); pass('low-stock alert fires when the level is crossed');
+
+const intel = await rpc(OWNER, `select public.get_inventory_intelligence(30) r`);
+assert.ok(intel.r.products.length > 3 && intel.r.summary.stock_cost >= 0 && intel.r.by_category.length);
+console.log('  intelligence summary:', JSON.stringify(intel.r.summary));
+await expectFail(STRANGER, `select public.get_inventory_intelligence(30)`, [], /not allowed/);
+const byItem = await rpc(OWNER, `select public.get_sales_by_item(now()-interval '1 day', now()+interval '1 day') r`);
+assert.ok(byItem.r.items.length && byItem.r.categories.length);
+pass('inventory intelligence + sales by item');
+await balanced();
+console.log('ALL INVENTORY TESTS PASSED');
