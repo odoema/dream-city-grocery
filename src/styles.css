@@ -375,7 +375,12 @@ details.journal summary { display: flex; gap: 1rem; cursor: pointer; flex-wrap: 
 /* ------------------------------------------------------------------ sell page layout (short screens, photos) */
 .pos-cart { overflow-y: auto; }
 .pos-cart > *, .cart-form > * { flex-shrink: 0; }
-.pos-cart .cart-lines { flex: 1 1 auto; min-height: 80px; }
+.pos-cart { height: calc(100vh - 2rem); }
+.pos-cart .cart-lines { flex: 0 0 50%; height: 50%; min-height: 0; overflow-y: auto; }
+@media (max-width: 860px) {
+  .pos-cart { height: auto; }
+  .pos-cart .cart-lines { flex: 0 0 auto; height: 50vh; }
+}
 .cart-form > label, .customer-row, .discount-row, .tender-row { width: 100%; text-align: left; grid-column: 1 / -1; }
 .customer-row label, .discount-row label { text-align: left; }
 .chips { scrollbar-width: thin; scrollbar-color: rgba(22, 55, 106, .3) transparent; }
