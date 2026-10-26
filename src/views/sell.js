@@ -49,7 +49,7 @@ export async function render(root) {
             can.manageCustomers() ? h('button', { class: 'secondary small', type: 'button', onclick: quickCustomer }, '+ New') : null)),
           can.discount() ? h('div', { class: 'discount-row' }, h('label', null, 'Discount'), discountInput) : null,
           h('div', { class: 'tender-row' }, tendered, changeLine)),
-        totals, checkoutBtn));
+        totals, checkoutBtn)));
   const cartEl = root.querySelector('#pos-cart');
 
   async function load() {
