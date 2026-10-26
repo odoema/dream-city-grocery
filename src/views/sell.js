@@ -5,6 +5,7 @@ import { money, num, parseAmount, paymentLabel } from '../lib/format.js';
 import { toast, showError, modal, withBusy, formModal, confirmDialog } from '../lib/ui.js';
 import { printReceipt } from '../lib/receipt.js';
 import { imageUrls } from '../lib/images.js';
+import { makeResizer } from '../lib/resize.js';
 
 const CART_KEY = 'pos.cart.v2';
 
@@ -23,6 +24,8 @@ export async function render(root) {
   const search = h('input', { class: 'search', type: 'search', placeholder: 'Search or scan barcode…', 'aria-label': 'Search products or scan a barcode', autocomplete: 'off' });
   const chips = h('div', { class: 'chips', role: 'toolbar', 'aria-label': 'Categories' });
   const grid = h('div', { class: 'product-grid' });
+  const cartHandle = h('div', { class: 'resizer resizer-x pos-resizer', 'aria-label': 'Resize sale column', 'data-invert': '1' });
+  const splitHandle = h('div', { class: 'resizer resizer-y cart-resizer', 'aria-label': 'Resize sale items area' });
   const cartList = h('div', { class: 'cart-lines' });
   const totals = h('div', { class: 'cart-totals' });
   const payButtons = h('div', { class: 'segmented', role: 'radiogroup', 'aria-label': 'Payment method' });
@@ -40,10 +43,11 @@ export async function render(root) {
         h('div', { class: 'pos-search' }, search),
         chips, grid),
       mobileBar,
+      cartHandle,
       h('aside', { class: 'pos-cart card', 'aria-label': 'Current sale', id: 'pos-cart' },
         h('div', { class: 'card-head' }, h('h2', null, 'Current sale'), countLabel,
           h('button', { class: 'link', type: 'button', onclick: clearCartAsk }, 'Clear')),
-        cartList,
+        cartList, splitHandle,
         h('div', { class: 'cart-form' },
           h('label', null, 'Payment'), payButtons,
           h('div', { class: 'customer-row' }, h('label', null, 'Customer'), h('div', { class: 'with-action' }, customerSelect,
@@ -52,6 +56,13 @@ export async function render(root) {
           h('div', { class: 'tender-row' }, tendered, changeLine)),
         totals, checkoutBtn)));
   const cartEl = root.querySelector('#pos-cart');
+  // Column border between products and the sale, and between sale items and checkout.
+  makeResizer(cartHandle, { name: '--cart-w', min: () => 300, max: () => Math.max(320, root.clientWidth - 360),
+    compute: e => root.querySelector('.pos').getBoundingClientRect().right - e.clientX });
+  makeResizer(splitHandle, { name: '--cart-split', unit: '%', min: () => 15, max: () => 80, compute: e => {
+    const r = cartEl.getBoundingClientRect();
+    return (e.clientY - cartList.getBoundingClientRect().top) / r.height * 100;
+  } });
 
   // ------------------------------------------------------------ data
   async function load() {
