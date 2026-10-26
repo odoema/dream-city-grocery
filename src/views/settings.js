@@ -26,7 +26,7 @@ function shopSettings() {
       { name: 'email', label: 'Email', type: 'email', value: s.email },
       { name: 'address', label: 'Address', value: s.address, full: true },
       { name: 'tax_id', label: 'Tax ID (TIN)', value: s.tax_id },
-      { name: 'primary_color', label: 'Brand colour', type: 'color', value: s.primary_color || '#176B45' },
+      { name: 'primary_color', label: 'Brand colour', type: 'color', value: s.primary_color || '#16376A' },
       { type: 'section', label: 'Money & time' },
       { name: 'currency_code', label: 'Currency', type: 'select', value: s.currency_code, options: CURRENCIES },
       { name: 'currency_decimals', label: 'Decimals', type: 'select', value: s.currency_decimals, options: [0, 2].map(v => ({ value: v, label: String(v) })) },
