@@ -1,3 +1,4 @@
+import '../receipt-archive.css';
 import { h, clear, table, downloadCsv } from '../lib/dom.js';
 import { db, rpc, run } from '../lib/supabase.js';
 import { can, is } from '../lib/state.js';
