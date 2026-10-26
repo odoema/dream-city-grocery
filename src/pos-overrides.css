@@ -1,14 +1,7 @@
 /* POS usability refinements. Kept separate so existing views remain untouched. */
 
-.product-grid {
-  grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
-  gap: .75rem;
-}
-.product-card {
-  min-height: 150px;
-  padding: .85rem;
-  gap: .3rem;
-}
+.product-grid { grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: .75rem; }
+.product-card { min-height: 150px; padding: .85rem; gap: .3rem; }
 .product-card .p-photo { aspect-ratio: 5 / 4; }
 .p-name { font-size: .98rem; }
 .p-meta { font-size: .78rem; }
@@ -17,22 +10,27 @@
 
 /* ================================================================
    CASH REGISTER / TILL
-   The sale register is intentionally the dominant workspace.
-   Desktop: roughly 28% catalogue / 72% current-sale register.
+   Three working areas on desktop:
+   1. Product catalogue
+   2. Current sale / basket (scrolls independently)
+   3. Checkout / payment column
 ================================================================ */
 .pos {
-  grid-template-columns: minmax(280px, 28%) minmax(0, 72%);
+  grid-template-columns: minmax(250px, .8fr) minmax(0, 2.2fr);
   gap: 1rem;
   align-items: start;
 }
-
 .pos-products { min-width: 0; }
 
+/* The right side is the register. Its inside is deliberately split
+   into a large scrolling basket and a dedicated checkout column. */
 .pos-cart {
   position: sticky;
   top: 1rem;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(290px, .85fr);
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  column-gap: 1rem;
   height: calc(100vh - 2rem);
   min-height: 600px;
   max-height: calc(100vh - 2rem);
@@ -41,37 +39,38 @@
 }
 
 .pos-cart .card-head {
-  flex: 0 0 auto;
+  grid-column: 1 / -1;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: .75rem;
   margin-bottom: .7rem;
   padding-bottom: .65rem;
   border-bottom: 2px solid var(--orange);
 }
-.pos-cart .card-head h2 { font-size: 1.35rem; }
+.pos-cart .card-head h2 { font-size: 1.4rem; }
 
-/* The basket itself is the scrolling area. It must never disappear. */
+/* Column 2: the actual Current Sale basket. */
 .pos-cart > .cart-lines {
-  display: block;
-  flex: 1 1 0;
-  min-height: 220px;
-  height: 0;
+  grid-column: 1;
+  grid-row: 2 / 5;
+  min-height: 0;
+  height: auto;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 .4rem 0 0;
+  padding: 0 .65rem 0 0;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   scrollbar-width: auto;
 }
-
-.pos-cart > .cart-lines::-webkit-scrollbar { width: 12px; }
-.pos-cart > .cart-lines::-webkit-scrollbar-thumb {
-  background: var(--brand);
-  border-radius: 10px;
-}
+.pos-cart > .cart-lines::-webkit-scrollbar { width: 13px; }
+.pos-cart > .cart-lines::-webkit-scrollbar-thumb { background: var(--brand); border-radius: 10px; }
 
 .cart-line {
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: .5rem 1rem;
-  padding: .95rem .25rem;
+  gap: .6rem 1rem;
+  padding: 1rem .25rem;
 }
 .cl-main b { font-size: 1.08rem; }
 .cl-main small { font-size: .85rem; }
@@ -80,76 +79,70 @@
 .qty input { width: 72px; min-height: 44px; font-weight: 700; }
 .cl-total { font-size: 1.05rem; }
 
-.cart-totals {
-  flex: 0 0 auto;
-  margin: .65rem 0 .25rem;
-  padding: .65rem .1rem 0;
-  border-top: 1px solid var(--line);
-}
-.cart-totals .grand {
-  font-size: 1.7rem;
-  padding-top: .55rem;
-}
-
-.cart-form {
-  flex: 0 0 auto;
-  padding: .7rem 0 .65rem;
-  gap: .55rem;
-  border-top: 1px solid var(--line);
-}
-
-.segmented {
-  grid-template-columns: repeat(5, minmax(90px, 1fr));
-  gap: .45rem;
-}
-.segmented button {
-  min-height: 48px;
-  padding: .5rem .4rem;
-  font-size: .9rem;
-  border-radius: 9px;
-}
-
-.customer-row {
-  flex-direction: row;
-  align-items: center;
+/* Column 3: checkout controls. This column stays visible while the
+   basket above/left scrolls. */
+.pos-cart > .cart-form {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  overflow-y: auto;
+  padding: .35rem 0 .7rem;
   gap: .65rem;
+  border-left: 1px solid var(--line);
+  padding-left: 1rem;
 }
-.customer-row > label { flex: 0 0 78px; }
-.customer-row .with-action { flex: 1; }
+.pos-cart > .cart-form > label:first-child {
+  font-weight: 800;
+  font-size: 1.05rem;
+}
 
-.discount-row {
-  display: grid;
-  grid-template-columns: 78px minmax(0, 1fr);
-  align-items: center;
-  gap: .65rem;
+.segmented { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+.segmented button { min-height: 48px; padding: .5rem .4rem; font-size: .9rem; border-radius: 9px; }
+
+.customer-row { flex-direction: column; align-items: stretch; gap: .35rem; }
+.customer-row > label { flex: 0 0 auto; }
+.customer-row .with-action { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem; }
+
+.discount-row { display: grid; grid-template-columns: 1fr; align-items: stretch; gap: .35rem; }
+.tender-row { grid-template-columns: minmax(0, 1fr); gap: .45rem; }
+
+.pos-cart > .cart-totals {
+  grid-column: 2;
+  grid-row: 3;
+  margin: 0;
+  padding: .7rem 0 .4rem 1rem;
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
 }
-.tender-row { grid-template-columns: minmax(0, 1fr) auto; }
+.cart-totals .grand { font-size: 1.7rem; padding-top: .55rem; }
 
 .pos-cart > .primary.big {
-  flex: 0 0 auto;
+  grid-column: 2;
+  grid-row: 4;
   min-height: 66px;
   font-size: 1.25rem;
   border-radius: 10px;
-  margin-top: .15rem;
+  margin: .2rem 0 0 1rem;
 }
 
-/* Large desktop: keep Current Sale at about three quarters of the POS. */
+/* Make the two main register columns use the available width. */
 @media (min-width: 1201px) {
-  .pos { grid-template-columns: minmax(280px, 27%) minmax(0, 73%); }
+  .pos { grid-template-columns: minmax(250px, .8fr) minmax(0, 2.2fr); }
 }
 
-/* Medium desktop: still give the register at least half the workspace. */
 @media (min-width: 861px) and (max-width: 1200px) {
-  .pos { grid-template-columns: minmax(300px, 42%) minmax(0, 58%); }
+  .pos { grid-template-columns: minmax(230px, .8fr) minmax(0, 1.8fr); }
+  .pos-cart { grid-template-columns: minmax(0, 1.35fr) minmax(250px, .95fr); column-gap: .8rem; }
   .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .segmented { grid-template-columns: repeat(3, minmax(90px, 1fr)); }
+  .segmented { grid-template-columns: repeat(2, minmax(80px, 1fr)); }
   .segmented button { font-size: .8rem; }
 }
 
-/* Mobile/tablet: stack the register below the catalogue. */
+/* Mobile/tablet: return to one column and keep the basket scrollable. */
 @media (max-width: 860px) {
   .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
   .product-card { min-height: 148px; }
+  .pos { grid-template-columns: 1fr; }
 
   .pos-cart {
     position: static;
@@ -159,35 +152,37 @@
     max-height: none;
     margin-top: 1rem;
     padding: 1rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(300px, 45vh) auto auto auto;
+    gap: .65rem;
     overflow: hidden;
   }
-
+  .pos-cart .card-head { grid-column: 1; grid-row: 1; margin-bottom: 0; }
   .pos-cart > .cart-lines {
-    flex: 0 0 auto;
-    height: auto;
-    min-height: 320px;
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 300px;
     max-height: 52vh;
+    height: auto;
     overflow-y: auto;
+    border-left: 0;
   }
+  .pos-cart > .cart-form {
+    grid-column: 1;
+    grid-row: 3;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding: .5rem 0;
+    overflow: visible;
+  }
+  .pos-cart > .cart-totals { grid-column: 1; grid-row: 4; border-left: 0; padding-left: 0; }
+  .pos-cart > .primary.big { grid-column: 1; grid-row: 5; margin-left: 0; }
 
-  .cart-form { gap: .55rem; }
-  .segmented {
-    grid-template-columns: repeat(3, 1fr);
-    gap: .4rem;
-  }
-  .segmented button {
-    min-height: 46px;
-    font-size: .78rem;
-  }
-  .customer-row,
-  .discount-row,
-  .tender-row { width: 100%; }
+  .segmented { grid-template-columns: repeat(3, 1fr); gap: .4rem; }
+  .segmented button { min-height: 46px; font-size: .78rem; }
+  .customer-row, .discount-row, .tender-row { width: 100%; }
   .cart-totals .grand { font-size: 1.4rem; }
-  .pos-cart > .primary.big {
-    min-height: 60px;
-    font-size: 1.05rem;
-  }
-
   .receipt-actions { justify-content: flex-start; }
 }
 
@@ -202,12 +197,5 @@
   .segmented button { min-height: 44px; font-size: .72rem; }
 }
 
-.receipt-actions {
-  display: inline-flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: .4rem;
-  flex-wrap: nowrap;
-}
-.receipt-actions .primary,
-.receipt-actions .secondary { min-width: 78px; }
+.receipt-actions { display: inline-flex; justify-content: flex-end; align-items: center; gap: .4rem; flex-wrap: nowrap; }
+.receipt-actions .primary, .receipt-actions .secondary { min-width: 78px; }
