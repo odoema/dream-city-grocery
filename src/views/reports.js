@@ -15,16 +15,17 @@ export async function render(root) {
     loading(host);
     const p = picker.get();
     try {
-      const [summary, sales, legacy] = await Promise.all([
+      const [summary, sales, legacy, byItem] = await Promise.all([
         rpc('get_sales_summary', { p_from: p.from, p_to: p.to }),
         run(db().from('sales').select('id,receipt_number,created_at,payment_method,total,cost_of_goods,status,cashier:profiles!sales_cashier_id_fkey(full_name),customers(name)').gte('created_at', p.from).lt('created_at', p.to).order('created_at', { ascending: false }).limit(1000)),
-        can.accounts() ? rpc('get_legacy_sales_overview').catch(() => null) : Promise.resolve(null)
+        can.accounts() ? rpc('get_legacy_sales_overview').catch(() => null) : Promise.resolve(null),
+        rpc('get_sales_by_item', { p_from: p.from, p_to: p.to }).catch(() => null)
       ]);
-      draw(summary, sales, legacy, p);
+      draw(summary, sales, legacy, p, byItem);
     } catch (e) { showError(e); clear(host, h('p', { class: 'muted' }, e.message)); }
   }
 
-  function draw(s, sales, legacy, p) {
+  function draw(s, sales, legacy, p, byItem) {
     const margin = Number(s.net_sales) > 0 ? Math.round(Number(s.gross_profit) / Number(s.net_sales) * 100) : 0;
     const days = s.by_day || [];
     clear(host,
@@ -53,6 +54,7 @@ export async function render(root) {
           { label: 'Receipts', class: 'num', value: r => num(r.count) },
           { label: 'Sales', class: 'num', value: r => money(r.total) }
         ], s.by_cashier || [], { empty: 'No sales.' })) : null),
+      byItem ? salesByItem(byItem, p) : null,
       card(h('div', { class: 'row between' }, h('h2', null, 'Receipts'), h('button', { class: 'secondary small', onclick: () => exportSales(sales, p) }, 'Export CSV')),
         table([
           { label: 'Receipt', value: r => h('b', null, r.receipt_number) },
@@ -71,6 +73,47 @@ export async function render(root) {
         h('p', null, `${num(legacy.lines)} sale lines from ${date(legacy.first_sale)} to ${date(legacy.last_sale)}, net ${money(legacy.net_sales)}. `,
           Number(legacy.unmatched_lines) ? h('span', { class: 'warn' }, `${num(legacy.unmatched_lines)} lines did not match a product.`) : 'All lines matched products.'),
         h('p', { class: 'muted' }, 'Imported history is used for shopping suggestions. It is not part of these totals or the accounts.')) : null);
+  }
+
+  function salesByItem(d, p) {
+    let view = 'items';
+    const host = h('div');
+    const search = h('input', { class: 'search', type: 'search', placeholder: 'Search…', 'aria-label': 'Search items' });
+    const sel = h('select', { 'aria-label': 'Group by' }, h('option', { value: 'items' }, 'By item'), h('option', { value: 'categories' }, 'By category'));
+    const total = d.items.reduce((a, r) => a + Number(r.revenue), 0) || 1;
+    const drawT = () => {
+      const q = search.value.trim().toLowerCase();
+      if (view === 'items') {
+        const rows = d.items.filter(r => !q || (r.name + ' ' + r.sku + ' ' + r.category).toLowerCase().includes(q));
+        clear(host, table([
+          { label: 'Product', value: r => h('div', null, h('b', null, r.name), h('small', { class: 'block muted' }, r.sku + ' · ' + r.category)) },
+          { label: 'Qty sold', class: 'num', value: r => num(r.quantity || 0) },
+          { label: 'Sales', class: 'num', value: r => money(r.revenue) },
+          { label: 'Cost', class: 'num', value: r => money(r.cost) },
+          { label: 'Profit', class: 'num', value: r => h('span', { class: Number(r.profit) < 0 ? 'bad' : '' }, money(r.profit)) },
+          { label: 'Margin', class: 'num', value: r => Number(r.revenue) > 0 ? num(Number(r.profit) / Number(r.revenue) * 100, 0) + '%' : '—' },
+          { label: 'Share', class: 'num', value: r => num(Number(r.revenue) / total * 100, 1) + '%' },
+          { label: 'Refunded', class: 'num', value: r => Number(r.refunded_qty) ? num(r.refunded_qty) : '' }
+        ], rows.slice(0, 300), { empty: 'No sales in this period.' }), rows.length > 300 ? h('p', { class: 'muted pad' }, `Showing 300 of ${rows.length}. Export CSV for all.`) : null);
+      } else {
+        const rows = d.categories.filter(r => !q || r.category.toLowerCase().includes(q));
+        clear(host, table([
+          { label: 'Category', value: r => r.category },
+          { label: 'Qty sold', class: 'num', value: r => num(r.quantity) },
+          { label: 'Sales', class: 'num', value: r => money(r.revenue) },
+          { label: 'Profit', class: 'num', value: r => money(r.profit) },
+          { label: 'Margin', class: 'num', value: r => Number(r.revenue) > 0 ? num(Number(r.profit) / Number(r.revenue) * 100, 0) + '%' : '—' },
+          { label: 'Share', class: 'num', value: r => num(Number(r.revenue) / total * 100, 1) + '%' }
+        ], rows, { empty: 'No sales in this period.' }));
+      }
+    };
+    search.addEventListener('input', drawT);
+    sel.addEventListener('change', () => { view = sel.value; drawT(); });
+    const exportBtn = h('button', { class: 'secondary small', onclick: () => view === 'items'
+      ? downloadCsv(`sales-by-item-${p.fromISO}-to-${p.toISO}.csv`, [['Product', 'SKU', 'Category', 'Qty', 'Sales', 'Cost', 'Profit', 'Refunded qty'], ...d.items.map(r => [r.name, r.sku, r.category, r.quantity || 0, r.revenue, r.cost, r.profit, r.refunded_qty])])
+      : downloadCsv(`sales-by-category-${p.fromISO}-to-${p.toISO}.csv`, [['Category', 'Qty', 'Sales', 'Profit'], ...d.categories.map(r => [r.category, r.quantity, r.revenue, r.profit])]) }, 'Export CSV');
+    drawT();
+    return card(h('div', { class: 'row between' }, h('h2', null, 'Sales by item'), h('div', { class: 'row' }, sel, exportBtn)), h('div', { class: 'toolbar' }, search), host);
   }
 
   function refund(r) {
