@@ -1,0 +1,18 @@
+{
+  "name": "Dream City Grocery POS",
+  "short_name": "Grocery POS",
+  "description": "Simple grocery point of sale, stock, purchasing and accounts.",
+  "start_url": "/dream-city-grocery/",
+  "scope": "/dream-city-grocery/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#16376A",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
