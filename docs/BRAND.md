@@ -1,148 +1,188 @@
-# Brand code
+# Dream City Grocery — Brand Code
 
-This is the rulebook for everything the system shows or prints: screens, receipts, documents, labels, icons. Follow it for every new feature. If a design needs something this code doesn't allow, change this file first, then the code.
+**Status: MANDATORY.** This is the single visual and document rulebook for the product. It applies to the application, receipts, invoices/notes, statements, vouchers, reports, labels, emails and future white-label copies.
 
-## 1. Colour — logo colours only
+If a new design needs something this code does not allow, **update this file first, then update the code**. Never solve a one-off design problem by inventing a new colour, font, logo treatment or document layout inside a screen.
 
-The system uses **only the five colours in the logo**. No greys, greens, reds, blues or gradients from anywhere else.
+## 1. Brand principles
 
-| Token | Hex | Name | Use it for |
+1. **Professional:** every screen and printed document should look like the same business system.
+2. **Clear:** important numbers and actions must be obvious at a glance.
+3. **Practical:** documents must print cleanly on ordinary office printers and thermal printers.
+4. **Consistent:** the same labels, dates, currency formatting, spacing and hierarchy are used everywhere.
+5. **White-label:** the engine must work for another shop without copying Dream City-specific text or assets.
+6. **Audit-friendly:** financial and stock documents must show enough identity and context to be useful when printed or filed.
+
+## 2. Colour — logo palette only
+
+The system uses only the five colours in the logo. No unrelated greys, greens, reds, blues or gradients.
+
+| Token | Hex | Name | Use |
 |---|---|---|---|
-| `--navy` | `#16376A` | Dream navy | Primary colour: menu, headings, buttons, table headers, totals bars, links, success states |
-| `--orange` | `#FB8F11` | Community orange | Accent: active menu item, tab underline, top edge of figure cards, divider rules, warnings |
-| `--bronze` | `#A16A1A` | Earth bronze | Errors, losses, negative amounts, "refunded"/"cancelled" stamps, box headings on documents |
-| `--black` | `#010101` | Ink black | Body text; everything on thermal receipts and barcode labels |
-| `--white` | `#FFFFFF` | Paper white | Backgrounds, text on navy |
+| `--navy` | `#16376A` | Dream navy | Primary colour: menu, headings, buttons, table headers, totals bars, links, normal/paid states |
+| `--orange` | `#FB8F11` | Community orange | Accent: active item, tabs, divider rules, figure-card top edge, attention/warning states |
+| `--bronze` | `#A16A1A` | Earth bronze | Errors, losses, negative amounts, refunded/cancelled stamps |
+| `--black` | `#010101` | Ink black | Body text and all thermal-receipt/label printing |
+| `--white` | `#FFFFFF` | Paper white | Backgrounds and text on navy |
 
-**Allowed:** the same five colours at reduced opacity, for borders, hover states, zebra rows and soft backgrounds. Examples: `rgba(22, 55, 106, .16)` or `#16376A33` for lines, `#16376A0A` for zebra rows.
+Reduced opacity of these colours is allowed for borders, hover states, zebra rows and soft backgrounds.
 
-**Not allowed:**
+**Never use:** arbitrary hex colours, gradients, rainbow status colours, or a separate colour system for documents.
 
-- any other hex value
-- colour-mixing with colours outside the logo
-- gradients
-- a dark mode with other colours
+### Meaning
 
-**Meaning of colours** (keep it consistent):
+- **Navy:** normal, OK, paid, in stock, primary action.
+- **Orange:** attention, low stock, warning, active selection.
+- **Bronze:** problem, loss, error, out of stock, refund/cancellation.
 
-| Meaning | Colour |
-|---|---|
-| Normal, OK, paid, in stock | Navy |
-| Needs attention, low stock, warning, active | Orange |
-| Problem, loss, error, out of stock, refunded | Bronze |
+All screen colours live in `src/styles.css`; document colours live in `src/lib/documents.js`. Do not hard-code colours elsewhere.
 
-All colours live in `src/styles.css` (`:root` tokens) and `src/lib/documents.js` (`DOC_CSS`). **Never hard-code a colour anywhere else.**
+## 3. Logo
 
-## 2. Logo
-
-- Always show the **full logo**: the people symbol plus the "DREAM CITY / Empowering Communities" wordmark. Never redraw it, recolour it, stretch it, crop it or add effects.
-- Place it on **white** only. On navy areas (menu, sign-in panel), put it in a white rounded box with at least 4 mm or 6 px of white space around it.
+- Use the full logo: people symbol + **DREAM CITY / Empowering Communities** wordmark.
+- Never redraw, recolour, stretch, crop or add effects to the logo.
+- Put the logo on white. On navy surfaces, place it in a white container with adequate breathing room.
 - Minimum sizes:
 
-| Where | Minimum size |
-|---|---|
-| Sidebar | full sidebar width (about 210 px) |
-| Sign-in page | 220 px |
+| Location | Minimum |
+|---|---:|
+| Sidebar | about 210 px wide |
+| Sign-in | 220 px |
 | Phone top bar | 40 px high |
-| A4 documents | 32 mm high, top-left |
-| Thermal receipts | 62% of paper width, printed in greyscale |
+| A4 documents | 32 mm high |
+| Thermal receipt | 62% of paper width |
 
-- When the logo is shown, **don't repeat the business name or tagline** next to it, because the logo already contains them.
-- The app icon (`public/icons/`) is a simplified mark: navy tile, white figure, orange and bronze arcs, white city skyline. Don't use it in place of the logo inside the app.
+When the full logo is displayed, do not redundantly place the tagline beside it.
 
-## 3. Typography
+## 4. Typography
 
-| Context | Font | Sizes |
+| Context | Font | Standard |
 |---|---|---|
-| App screens | Inter, falling back to the system UI font | Body 15 px · H1 24 px · H2 17.6 px · labels 13 px, bold |
-| A4 documents | Arial / Helvetica | Body 10.5 pt · document title 20 pt, uppercase, navy, letter-spaced · table headers 8.5 pt, uppercase |
-| Thermal receipts | Arial / Helvetica | 11.5 px (80 mm), 10.5 px (58 mm) · total 1.35× and bold |
+| App | Inter → system UI fallback | Body 15 px; H1 24 px; H2 17.6 px; labels 13 px bold |
+| A4 documents | Arial / Helvetica | Body 10.5 pt; title 20 pt uppercase; table headers 8.5 pt uppercase |
+| Thermal | Arial / Helvetica | 11.5 px for 80 mm; 10.5 px for 58 mm; total 1.35× bold |
 
-**Numbers:**
+Numbers use tabular alignment. Money uses `money()` and always includes the currency code, for example **UGX 12,500**. Quantities use `num()`. Dates use `date()` / `dateTime()` and appear as **26 Oct 2026** or **26 Oct 2026, 15:58**.
 
-- Money is always shown with the currency code, for example **UGX 12,500**, using `money()`.
-- Quantities use `num()`.
-- Amounts are right-aligned.
+## 5. Writing style
 
-**Dates:**
+Use plain English that shop staff understand.
 
-- Use the format **26 Oct 2026**, or **26 Oct 2026, 15:58** with a time.
-- Always use `date()` or `dateTime()`, which apply the shop's time zone.
+- Buttons are verbs: **Print statement**, **Save adjustment**, **Record payment**.
+- Avoid unnecessary accounting jargon in operational screens.
+- Errors explain the next action: **Enter a quantity for Sugar 1kg.**
+- Document titles are short and formal: **SALES RECEIPT**, **PURCHASE ORDER**, **GOODS RECEIVED NOTE**, **CUSTOMER STATEMENT**.
 
-## 4. Writing style
+## 6. Universal document standard
 
-- Plain English that shop staff understand: "Stock value", "Owed to suppliers", "Runs out soon". Avoid jargon unless it's on an accounting document.
-- Write buttons as verbs: "Print statement", "Save adjustment", "Record payment".
-- Errors say what to do next: "Enter a quantity for Sugar 1kg."
+**Every A4 system document must be generated by `documentHtml()` / `printDocument()` in `src/lib/documents.js`.**
 
-## 5. System-generated documents
+Every document follows this hierarchy:
 
-Every A4 document is built with `documentHtml()` / `printDocument()` in `src/lib/documents.js`, so they all look the same. Each document has these parts, in order:
+1. **Header** — full logo and shop identity on the left; document title, number, date and optional status stamp on the right.
+2. **Orange rule** — clear brand divider.
+3. **Identity boxes** — customer/supplier/recipient and transaction facts.
+4. **Main table** — navy header, white text, subtle navy-tint zebra rows, aligned numbers.
+5. **Totals** — clear subtotal/adjustment lines and one strong navy grand-total bar.
+6. **Notes / terms** — only when useful.
+7. **Signatures** — where the document represents authorization, receipt, checking or approval.
+8. **Footer** — shop identity plus printed date/time and user where available.
 
-1. **Header**: logo and shop details (address, phone, email, TIN) on the left. The document title (navy, uppercase), document number and date on the right. An optional **stamp** (bronze outline) such as PAID, RECEIVED or REFUNDED.
-2. **Orange rule**, 3 px.
-3. **Two info boxes** with a thin navy outline and bronze uppercase headings: who the document is for, and the key facts.
-4. **Line table**: navy header row with white uppercase labels, light navy zebra rows, numbers right-aligned.
-5. **Totals**: sub-totals in bold with a navy top line; the **grand total in a solid navy bar** with white text.
-6. Notes, if any.
-7. **Signature lines**, 2–3 of them (for example "Prepared by", "Approved by").
-8. **Footer**: a thin orange line, the shop name and tagline on the left, and "Printed <date> by <user>" on the right.
+### Document layout rules
 
-**Document numbers:**
+- A4 uses generous white space; do not fill every millimetre with content.
+- Keep tables readable when printed in black-and-white.
+- Never split a document title from its number.
+- Avoid orphaned headings at the bottom of a page.
+- Amounts are always right-aligned.
+- Negative amounts use the bronze semantic colour on colour printers and remain clearly marked with a minus sign.
+- Status stamps are restrained: **PAID**, **RECEIVED**, **REFUNDED**, **CANCELLED**, etc.
+- Do not expose internal database IDs unless they are deliberately part of the business reference.
+- Printed documents must contain the shop name even when the logo image cannot load.
 
-| Document | Number format |
+## 7. Required document set
+
+| Document | Standard |
 |---|---|
-| Sales receipt | `<prefix>-000123` (prefix from Settings) |
-| Stock adjustment | `ADJ-YYYYMMDD-0001` |
-| Supplier return | `RTN-YYYYMMDD-0001` |
-| Purchase order | `PO-…` |
-| Expense | `EXP-…` |
-| Customer payment | `PAY-xxxxxxxx` |
+| Sales receipt | Thermal 58/80 mm + A4 option |
+| Refund receipt | Same receipt identity with prominent REFUNDED status |
+| Customer payment receipt | A4 |
+| Customer statement | A4, chronological ledger + opening/closing balance |
+| Purchase order | A4 |
+| Goods received note | A4 |
+| Supplier return note | A4 |
+| Stock adjustment note | A4 |
+| Stock count sheet | A4 |
+| Expense/payment voucher | A4 |
+| Profit & loss | A4 |
+| Balance sheet | A4 |
+| Trial balance | A4 |
+| Journal listing | A4 |
+| Price/barcode labels | A4 sheet + supported thermal label sizes |
 
-**Documents the system produces:**
+If a system action logically creates a business record but has no printable document where one would reasonably be expected, treat that as a document gap and add it through the shared engine.
 
-| Document | Where to print it | Format |
-|---|---|---|
-| Sales receipt / refund receipt | Sell → after sale · Reports → Reprint | Thermal 58/80 mm (black only) or A4 (Settings → Printer paper) |
-| Customer payment receipt | Customers → Receive payment | A4 |
-| Customer statement | Customers → Statement → Print statement | A4 |
-| Purchase order | Buy → Orders → Print | A4 |
-| Goods received note | Buy → after recording a purchase or receiving an order | A4 |
-| Supplier return note | Inventory → Supplier returns → Print | A4 |
-| Stock adjustment note | Inventory → Adjust stock → Recent → Print | A4 |
-| Stock count sheet | Count stock → Print count sheet | A4 |
-| Payment voucher (expense) | Accounts → Expenses → Print | A4 |
-| Financial statements (P&L, balance sheet, trial balance) | Accounts → Print financial statements | A4 |
-| Price & barcode labels | Inventory → Labels | A4 sheet or 50×30 / 40×25 mm label rolls (black only) |
+## 8. Thermal receipt standard
 
-## 6. Thermal receipts and labels
+Thermal printers are treated as **black-on-white** output. The logo is printed in grayscale.
 
-Thermal printers print **black only**, so receipts and labels use black on white. The logo prints in greyscale.
-
-A receipt has these parts, in order:
+Receipt order:
 
 1. logo
-2. shop details
-3. **SALES RECEIPT** title between two heavy rules
-4. receipt number, date, staff member and customer
-5. item lines (name in bold, then "qty × price" with the amount)
-6. items count, subtotal and discount
-7. **TOTAL** in large type between heavy rules
-8. payment method, cash given and change
-9. a Code 128 barcode of the receipt number
-10. thank-you line and "Keep this receipt for returns."
+2. shop identity and contact details
+3. **SALES RECEIPT** or **REFUND** title with strong rules
+4. receipt number, date/time, cashier and customer
+5. item lines: item name, quantity × unit price, line total
+6. item count, subtotal and discount
+7. **TOTAL** in large bold type between strong rules
+8. payment method, cash received and change where relevant
+9. Code 128 barcode for the receipt number
+10. concise thank-you/returns message
 
-## 7. Screens
+Thermal receipts must avoid unnecessary decoration. The priority is readability, speed and reliable printing.
 
-- **Sidebar**: navy background, large logo in a white box at the top, white menu text, an orange bar on the active item. Signed-in user at the bottom, with role and "Sign out" in orange.
-- **Phones**: navy top bar and bottom bar with an orange edge; the active item is orange.
-- **Cards**: white with a thin navy-tint border. Figure cards have a 3 px orange top edge and navy numbers.
-- **Buttons**:
-  - Primary: solid navy (black on hover).
-  - Secondary: white with a navy outline.
-  - Destructive: bronze.
-- **Badges**: navy for OK, orange for warning, bronze for problems.
+## 9. Screen standard
 
-## 8. White-label note
+- **Sidebar:** white surface, navy identity, orange active indicator.
+- **Phones:** navy top/bottom navigation with orange active edge.
+- **Cards:** white, thin navy-tint border, restrained shadow; figure cards may use a 3 px orange top edge.
+- **Primary button:** navy.
+- **Secondary button:** white with navy border.
+- **Destructive button:** bronze.
+- **Badges:** navy = normal, orange = attention, bronze = problem.
+- Keep actions close to the information they affect.
+- Prefer one obvious primary action per section.
 
-Other shops replace the logo and can set their own brand colour (Settings → Brand colour). That colour replaces **navy only**. If a shop's logo has different colours, update the five tokens in `src/styles.css` and `DOC_CSS` to that logo's palette, and keep every other rule in this file.
+## 10. Accessibility and print quality
+
+- Maintain visible keyboard focus.
+- Do not communicate meaning by colour alone; use words/icons/status text too.
+- Keep touch targets comfortably usable on phones.
+- Documents must remain understandable when printed without colour.
+- Images must have useful alternative text where appropriate.
+- Do not rely on background graphics for essential information.
+
+## 11. White-label rules
+
+Other shops may replace the logo, business name, contact details, currency and brand palette through Settings/configuration.
+
+The **structure does not change**: hierarchy, document spacing, typography, status semantics, receipt order and print rules remain consistent.
+
+Never hard-code **Dream City** in reusable code. Read `state.settings` / `store_settings`.
+
+## 12. Developer enforcement
+
+Before merging a new UI or document feature, check:
+
+- [ ] No new colour outside the five brand tokens.
+- [ ] No one-off document CSS in a view.
+- [ ] Logo comes from branding/settings.
+- [ ] Money uses `money()` and quantities use `num()`.
+- [ ] Dates use `date()` / `dateTime()`.
+- [ ] A4 output uses `documentHtml()` / `printDocument()`.
+- [ ] Thermal sales/refunds use `src/lib/receipt.js`.
+- [ ] Business documents have a reference number where applicable.
+- [ ] Document status is visible in words, not colour alone.
+- [ ] The result works for a white-label shop, not only Dream City.
+
+**This file is the source of truth for visual consistency.** Update it before introducing a new visual pattern.
