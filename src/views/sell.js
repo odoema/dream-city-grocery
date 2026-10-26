@@ -38,17 +38,18 @@ export async function render(root) {
     h('div', { class: 'pos' },
       h('section', { class: 'pos-products card' }, h('div', { class: 'pos-search' }, search), chips, grid),
       mobileBar,
-      h('aside', { class: 'pos-cart card', 'aria-label': 'Current sale', id: 'pos-cart' },
+      h('section', { class: 'pos-sale card', 'aria-label': 'Current sale', id: 'pos-cart' },
         h('div', { class: 'card-head' }, h('h2', null, 'Current sale'), countLabel,
           h('button', { class: 'link', type: 'button', onclick: clearCartAsk }, 'Clear')),
-        cartList,
+        cartList),
+      h('aside', { class: 'pos-checkout card', 'aria-label': 'Checkout' },
         h('div', { class: 'cart-form' },
           h('label', null, 'Payment'), payButtons,
           h('div', { class: 'customer-row' }, h('label', null, 'Customer'), h('div', { class: 'with-action' }, customerSelect,
             can.manageCustomers() ? h('button', { class: 'secondary small', type: 'button', onclick: quickCustomer }, '+ New') : null)),
           can.discount() ? h('div', { class: 'discount-row' }, h('label', null, 'Discount'), discountInput) : null,
           h('div', { class: 'tender-row' }, tendered, changeLine)),
-        totals, checkoutBtn)));
+        totals, checkoutBtn));
   const cartEl = root.querySelector('#pos-cart');
 
   async function load() {
