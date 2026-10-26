@@ -3,11 +3,13 @@ import { db, rpc, run } from '../lib/supabase.js';
 import { can } from '../lib/state.js';
 import { money, num, dateTime } from '../lib/format.js';
 import { pageHeader, card, formModal, modal, toast, showError, badge, stat, confirmDialog, loading } from '../lib/ui.js';
+import { imageUrls, uploadProductImage, removeProductImage } from '../lib/images.js';
 
 export async function render(root) {
   let products = [];
   let categories = [];
   let filter = 'all';
+  let photos = new Map();
   const search = h('input', { class: 'search', type: 'search', placeholder: 'Search name, SKU or barcode…', 'aria-label': 'Search products' });
   const filterSel = h('select', { 'aria-label': 'Filter' },
     [['all', 'All active'], ['low', 'Low stock'], ['out', 'Out of stock'], ['inactive', 'Inactive'], ['noprice', 'No selling price']].map(([v, l]) => h('option', { value: v }, l)));
@@ -24,10 +26,12 @@ export async function render(root) {
   async function load() {
     loading(listHost);
     const [p, c] = await Promise.all([
-      run(db().from('products').select('id,sku,barcode,name,category_id,unit,buying_price,selling_price,quantity_on_hand,reorder_level,active,available_for_sale,sold_by_weight,track_stock,description,source_system,categories(name)').order('name').limit(10000)),
+      run(db().from('products').select('id,sku,barcode,name,category_id,unit,buying_price,selling_price,quantity_on_hand,reorder_level,active,available_for_sale,sold_by_weight,track_stock,description,source_system,image_path,categories(name)').order('name').limit(10000)),
       run(db().from('categories').select('id,name,active').order('name'))
     ]);
     products = p; categories = c;
+    draw();
+    photos = await imageUrls(products.map(x => x.image_path));
     draw();
   }
 
@@ -54,7 +58,7 @@ export async function render(root) {
       stat('Missing a price', num(active.filter(p => Number(p.selling_price) <= 0).length)));
     const rows = visible();
     clear(listHost, table([
-      { label: 'Product', value: p => h('div', null, h('b', null, p.name), h('small', { class: 'block muted' }, p.sku + (p.barcode ? ' · ' + p.barcode : ''))) },
+      { label: 'Product', value: p => h('div', { class: 'with-thumb' }, thumb(p), h('div', null, h('b', null, p.name), h('small', { class: 'block muted' }, p.sku + (p.barcode ? ' · ' + p.barcode : '')))) },
       { label: 'Category', value: p => p.categories?.name || '—' },
       { label: 'Cost', class: 'num', value: p => money(p.buying_price) },
       { label: 'Price', class: 'num', value: p => h('b', null, money(p.selling_price)) },
@@ -67,6 +71,11 @@ export async function render(root) {
     rows.length > 500 ? h('p', { class: 'muted pad' }, `Showing 500 of ${rows.length}. Search to narrow down.`) : null);
   }
 
+  function thumb(p) {
+    const url = p.image_path && photos.get(p.image_path);
+    return url ? h('img', { class: 'thumb', src: url, alt: '', loading: 'lazy' }) : h('div', { class: 'thumb empty', 'aria-hidden': 'true' }, (p.name || '?').slice(0, 1).toUpperCase());
+  }
+
   search.addEventListener('input', debounce(draw, 150));
   filterSel.addEventListener('change', () => { filter = filterSel.value; draw(); });
 
@@ -74,7 +83,33 @@ export async function render(root) {
     const isNew = !p;
     p = p || { unit: 'piece', active: true, available_for_sale: true, track_stock: true, buying_price: 0, selling_price: 0, reorder_level: 0 };
     const listId = 'cat-list-' + Math.random().toString(36).slice(2, 6);
-    const extra = h('datalist', { id: listId }, categories.filter(c => c.active).map(c => h('option', { value: c.name })));
+    let photoFile = null;
+    let removePhoto = false;
+    const currentUrl = p.image_path && photos.get(p.image_path);
+    const preview = h('div', { class: 'photo-preview' }, currentUrl ? h('img', { src: currentUrl, alt: 'Product photo' }) : h('span', { class: 'muted' }, 'No photo yet'));
+    const fileInput = h('input', { type: 'file', accept: 'image/*', hidden: true });
+    const cameraInput = h('input', { type: 'file', accept: 'image/*', capture: 'environment', hidden: true });
+    const removeBtn = h('button', { type: 'button', class: 'link danger', hidden: !p.image_path }, 'Remove photo');
+    const onPick = input => () => {
+      const f = input.files[0];
+      if (!f) return;
+      photoFile = f; removePhoto = false;
+      clear(preview, h('img', { src: URL.createObjectURL(f), alt: 'New product photo' }));
+      removeBtn.hidden = false;
+    };
+    fileInput.addEventListener('change', onPick(fileInput));
+    cameraInput.addEventListener('change', onPick(cameraInput));
+    removeBtn.addEventListener('click', () => { photoFile = null; removePhoto = true; clear(preview, h('span', { class: 'muted' }, 'Photo will be removed')); removeBtn.hidden = true; });
+    const photoField = h('div', { class: 'field full photo-field' },
+      h('label', null, 'Photo'),
+      h('div', { class: 'photo-row' }, preview,
+        h('div', { class: 'stack' },
+          h('button', { type: 'button', class: 'secondary small', onclick: () => fileInput.click() }, 'Choose photo'),
+          h('button', { type: 'button', class: 'secondary small', onclick: () => cameraInput.click() }, 'Take photo'),
+          removeBtn,
+          h('small', { class: 'hint' }, 'Shown on the till. Shrunk automatically.'))),
+      fileInput, cameraInput);
+    const extra = h('div', null, h('datalist', { id: listId }, categories.filter(c => c.active).map(c => h('option', { value: c.name }))), photoField);
     formModal({
       title: isNew ? 'Add product' : 'Edit product', wide: true,
       subtitle: isNew ? 'Stock starts at zero. Add opening stock after saving, or receive it through Buy.' : 'Stock quantity changes only through sales, purchases and stock counts.',
@@ -103,12 +138,13 @@ export async function render(root) {
           description: v.description || '', sold_by_weight: v.sold_by_weight, track_stock: v.track_stock,
           available_for_sale: v.available_for_sale, active: v.active
         };
+        let productId = p.id;
         if (isNew) {
           let sku = v.sku;
           for (let attempt = 0; attempt < 5; attempt++) {
             const candidate = sku || 'P-' + Math.random().toString(36).slice(2, 8).toUpperCase();
-            const { error } = await db().from('products').insert({ ...row, sku: candidate });
-            if (!error) { toast('Product added.'); break; }
+            const { data: created, error } = await db().from('products').insert({ ...row, sku: candidate }).select('id').single();
+            if (!error) { productId = created.id; toast('Product added.'); break; }
             if (error.code === '23505' && !sku) continue;
             throw new Error(error.code === '23505' ? 'That SKU or barcode is already used by another product.' : error.message);
           }
@@ -116,6 +152,16 @@ export async function render(root) {
           const { error } = await db().from('products').update({ ...row, sku: v.sku || p.sku, updated_at: new Date().toISOString() }).eq('id', p.id);
           if (error) throw new Error(error.code === '23505' ? 'That SKU or barcode is already used by another product.' : error.message);
           toast('Product saved.');
+        }
+        if (photoFile && productId) {
+          try {
+            const path = await uploadProductImage(productId, photoFile);
+            await run(db().from('products').update({ image_path: path }).eq('id', productId));
+            if (p.image_path) await removeProductImage(p.image_path);
+          } catch (err) { showError(new Error('Product saved, but the photo was not: ' + err.message)); }
+        } else if (removePhoto && p.image_path) {
+          await run(db().from('products').update({ image_path: null }).eq('id', productId));
+          await removeProductImage(p.image_path);
         }
         await load();
       }
