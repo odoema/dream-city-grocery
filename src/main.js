@@ -8,6 +8,7 @@ import { renderLogin } from './views/login.js';
 import { renderClaimOwner, renderSetupWizard } from './views/setup.js';
 import { startRouter, stopRouter } from './router.js';
 import { applySavedSizes, makeResizer } from './lib/resize.js';
+import { icon, trimLogo } from './lib/icons.js';
 
 applySavedSizes();
 
@@ -112,24 +113,24 @@ export async function signOut() {
 
 // ------------------------------------------------------------------ shell
 export const NAV = [
-  { path: 'home', label: 'Home', icon: '⌂', roles: null },
-  { path: 'sell', label: 'Sell', icon: '🛒', roles: null },
-  { path: 'products', label: 'Products', icon: '▦', roles: null },
-  { path: 'customers', label: 'Customers', icon: '☺', roles: null },
-  { path: 'buy', label: 'Buy', icon: '⇩', roles: null },
-  { path: 'inventory', label: 'Inventory', icon: '▣', roles: ['owner', 'manager', 'accountant'] },
-  { path: 'count', label: 'Count stock', icon: '✓', roles: ['owner', 'manager', 'accountant'] },
-  { path: 'reports', label: 'Reports', icon: '▤', roles: null },
-  { path: 'accounts', label: 'Accounts', icon: '₿', roles: ['owner', 'manager', 'accountant'] },
-  { path: 'import', label: 'Import data', icon: '⤓', roles: ['owner', 'manager'] },
-  { path: 'staff', label: 'Staff', icon: '👥', roles: ['owner', 'manager'] },
-  { path: 'settings', label: 'Settings', icon: '⚙', roles: null }
+  { path: 'home', label: 'Home', icon: 'home', roles: null },
+  { path: 'sell', label: 'Sell', icon: 'sell', roles: null },
+  { path: 'products', label: 'Products', icon: 'products', roles: null },
+  { path: 'customers', label: 'Customers', icon: 'customers', roles: null },
+  { path: 'buy', label: 'Buy', icon: 'buy', roles: null },
+  { path: 'inventory', label: 'Inventory', icon: 'inventory', roles: ['owner', 'manager', 'accountant'] },
+  { path: 'count', label: 'Count stock', icon: 'count', roles: ['owner', 'manager', 'accountant'] },
+  { path: 'reports', label: 'Reports', icon: 'reports', roles: null },
+  { path: 'accounts', label: 'Accounts', icon: 'accounts', roles: ['owner', 'manager', 'accountant'] },
+  { path: 'import', label: 'Import data', icon: 'import', roles: ['owner', 'manager'] },
+  { path: 'staff', label: 'Staff', icon: 'staff', roles: ['owner', 'manager'] },
+  { path: 'settings', label: 'Settings', icon: 'settings', roles: null }
 ];
 
 function renderShell() {
   const s = state.settings || {};
   const items = NAV.filter(n => !n.roles || n.roles.includes(state.profile.role));
-  const navLink = n => h('a', { href: '#/' + n.path, class: 'nav-link', dataset: { path: n.path } }, h('span', { class: 'nav-icon', 'aria-hidden': 'true' }, n.icon), h('span', null, n.label));
+  const navLink = n => h('a', { href: '#/' + n.path, class: 'nav-link', dataset: { path: n.path } }, h('span', { class: 'nav-icon', 'aria-hidden': 'true', html: icon(n.icon) }), h('span', null, n.label));
   const brand = h('div', { class: 'brand' },
     s.logo_url ? h('img', { src: s.logo_url, alt: s.business_name || 'Logo', class: 'brand-logo' }) : h('div', { class: 'brand-mark' }, (s.business_name || 'G').slice(0, 1)),
     s.logo_url ? null : h('div', null, h('b', null, s.business_name || 'Grocery'), s.tagline ? h('small', null, s.tagline) : null));
@@ -146,11 +147,13 @@ function renderShell() {
     h('a', { class: 'primary small', href: '#/sell' }, 'Sell'));
   const bottom = h('nav', { class: 'bottom-nav', 'aria-label': 'Quick' },
     items.filter(n => ['home', 'sell', 'products', 'buy'].includes(n.path)).map(navLink),
-    h('button', { class: 'nav-link', onclick: () => document.body.classList.toggle('drawer-open') }, h('span', { class: 'nav-icon' }, '☰'), h('span', null, 'More')));
+    h('button', { class: 'nav-link', onclick: () => document.body.classList.toggle('drawer-open') }, h('span', { class: 'nav-icon', html: icon('menu') }), h('span', null, 'More')));
   const scrim = h('div', { class: 'scrim', onclick: () => document.body.classList.remove('drawer-open') });
   const sideHandle = h('div', { class: 'resizer resizer-x sidebar-resizer', 'aria-label': 'Resize menu' });
   makeResizer(sideHandle, { name: '--sidebar-w', min: () => 180, max: () => Math.min(420, window.innerWidth * 0.4), compute: e => e.clientX });
   clear(app, h('div', { class: 'shell' }, drawer, sideHandle, scrim, h('div', { class: 'content' }, topbar, main), bottom));
+  // Sharper, larger logo: trim its white margin so the artwork fills the frame.
+  for (const img of app.querySelectorAll('.brand-logo, .brand-logo-top')) trimLogo(img.src).then(src => { if (src) img.src = src; });
   startRouter(main, items);
 }
 
