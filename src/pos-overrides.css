@@ -17,41 +17,54 @@
 
 /* ================================================================
    CASH REGISTER / TILL
-   Current Sale is a dedicated register: items get the main space,
-   total is prominent, then payment/customer/tender controls, then
-   one large checkout action.
+   The right side is a real cashier register: a wide item list first,
+   then totals, payment/customer controls, and one large checkout action.
 ================================================================ */
+.pos {
+  grid-template-columns: minmax(0, 1fr) 520px;
+  gap: 1rem;
+  align-items: start;
+}
+
 .pos-cart {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
-  min-height: calc(100vh - 2rem);
+  position: sticky;
+  top: 1rem;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 2rem);
+  min-height: 560px;
   max-height: calc(100vh - 2rem);
+  padding: 1rem;
   overflow: hidden;
 }
-.pos-cart > .card-head { grid-row: 1; }
-.pos-cart > .cart-lines { grid-row: 2; min-height: 0; overflow-y: auto; }
-.pos-cart > .cart-totals { grid-row: 3; }
-.pos-cart > .cart-form { grid-row: 4; }
-.pos-cart > .primary.big { grid-row: 5; }
 
 .pos-cart .card-head {
+  flex: 0 0 auto;
   margin-bottom: .7rem;
   padding-bottom: .65rem;
   border-bottom: 2px solid var(--orange);
 }
-.pos-cart .card-head h2 { font-size: 1.25rem; }
+.pos-cart .card-head h2 { font-size: 1.3rem; }
 
-.cart-lines {
-  min-height: 0;
+/* IMPORTANT: keep the sale lines visible and give them the main register space. */
+.pos-cart > .cart-lines {
+  display: block;
+  flex: 1 1 auto;
+  min-height: 180px;
+  height: auto;
   overflow-y: auto;
-  padding-right: .25rem;
+  overflow-x: hidden;
+  padding: 0 .25rem 0 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
+
 .cart-line {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: .45rem .75rem;
-  padding: .85rem .15rem;
+  padding: .9rem .15rem;
 }
-.cl-main b { font-size: 1rem; }
+.cl-main b { font-size: 1.02rem; }
 .cl-main small { font-size: .82rem; }
 .qty { gap: .3rem; }
 .qty button { width: 42px; height: 42px; font-size: 1.25rem; }
@@ -59,61 +72,66 @@
 .cl-total { font-size: 1.02rem; }
 
 .cart-totals {
-  margin: .55rem 0 .25rem;
+  flex: 0 0 auto;
+  margin: .6rem 0 .25rem;
   padding: .65rem .1rem 0;
   border-top: 1px solid var(--line);
 }
 .cart-totals .grand {
-  font-size: 1.55rem;
-  padding-top: .5rem;
+  font-size: 1.65rem;
+  padding-top: .55rem;
 }
 
 .cart-form {
-  padding: .65rem 0 .55rem;
-  gap: .5rem;
+  flex: 0 0 auto;
+  padding: .7rem 0 .6rem;
+  gap: .55rem;
   border-top: 1px solid var(--line);
 }
+
 .segmented {
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: .35rem;
+  gap: .4rem;
 }
 .segmented button {
-  min-height: 44px;
-  padding: .45rem .25rem;
-  font-size: .78rem;
+  min-height: 46px;
+  padding: .45rem .3rem;
+  font-size: .82rem;
   border-radius: 9px;
 }
+
 .customer-row {
   flex-direction: row;
   align-items: center;
-  gap: .5rem;
+  gap: .55rem;
 }
 .customer-row > label { flex: 0 0 72px; }
 .customer-row .with-action { flex: 1; }
+
 .discount-row {
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);
   align-items: center;
-  gap: .5rem;
+  gap: .55rem;
 }
 .tender-row { grid-template-columns: minmax(0, 1fr) auto; }
 
 .pos-cart > .primary.big {
-  min-height: 58px;
-  font-size: 1.15rem;
+  flex: 0 0 auto;
+  min-height: 62px;
+  font-size: 1.18rem;
   border-radius: 10px;
-  margin-top: .15rem;
+  margin-top: .1rem;
 }
 
-/* Medium desktop: preserve the large till while avoiding crowding. */
+/* Medium desktop: still a proper till, without crushing the product catalogue. */
 @media (min-width: 861px) and (max-width: 1200px) {
-  .pos { grid-template-columns: minmax(0, 1fr) 430px; }
+  .pos { grid-template-columns: minmax(0, 1fr) 460px; }
   .product-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-  .segmented button { font-size: .72rem; }
+  .segmented button { font-size: .75rem; }
 }
 
-/* Mobile/tablet: make Current Sale a large, usable till panel rather
-   than a short card. Keep the existing product catalogue and routing. */
+/* Mobile/tablet: stack the register below the catalogue. */
 @media (max-width: 860px) {
   .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
   .product-card { min-height: 148px; }
@@ -121,6 +139,7 @@
   .pos-cart {
     position: static;
     width: 100%;
+    height: auto;
     min-height: calc(100vh - 7rem);
     max-height: none;
     margin-top: 1rem;
@@ -128,9 +147,9 @@
     overflow: hidden;
   }
 
-  .pos-cart .card-head { flex: none; }
-  .cart-lines {
-    min-height: 45vh;
+  .pos-cart > .cart-lines {
+    flex: 0 0 auto;
+    min-height: 320px;
     max-height: 52vh;
     overflow-y: auto;
   }
@@ -160,7 +179,7 @@
   .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .product-card { min-height: 138px; padding: .65rem; }
   .pos-cart { padding: .8rem; }
-  .cart-lines { min-height: 42vh; max-height: 48vh; }
+  .pos-cart > .cart-lines { min-height: 280px; max-height: 48vh; }
   .cart-line { padding: .7rem 0; }
   .qty button { width: 38px; height: 38px; }
   .qty input { width: 58px; min-height: 38px; }
