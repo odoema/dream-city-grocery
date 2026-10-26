@@ -4,12 +4,12 @@ import { can, is } from '../lib/state.js';
 import { money, num, dateTime, paymentLabel, date } from '../lib/format.js';
 import { pageHeader, card, toast, showError, badge, stat, loading, formModal } from '../lib/ui.js';
 import { periodPicker, barChart } from '../lib/period.js';
-import { loadReceipt, printReceipt } from '../lib/receipt.js';
+import { loadReceipt, printReceipt, downloadReceipt } from '../lib/receipt.js';
 
 export async function render(root) {
   const host = h('div');
   const picker = periodPicker(load, 'week');
-  clear(root, pageHeader('Reports', is('cashier') ? 'Your own sales.' : 'Sales, profit and what is selling.', picker.el), host);
+  clear(root, pageHeader('Reports', is('cashier') ? 'Your own sales and receipt archive.' : 'Sales, profit and receipt archive.', picker.el), host);
 
   async function load() {
     loading(host);
@@ -37,42 +37,36 @@ export async function render(root) {
         stat('Refunds', money(s.refunds), num(s.refund_count) + ' refunded', Number(s.refund_count) ? 'warn' : '')),
       h('div', { class: 'grid-2' },
         card('Sales by day', days.length ? barChart(days.map(d => ({ label: date(d.day), short: d.day.slice(5), value: d.total })), { format: money }) : h('p', { class: 'muted' }, 'No sales in this period.')),
-        card('How customers paid', table([
-          { label: 'Method', value: r => paymentLabel(r.method) },
-          { label: 'Receipts', class: 'num', value: r => num(r.count) },
-          { label: 'Amount', class: 'num', value: r => money(r.total) }
-        ], s.by_payment || [], { empty: 'No sales.' }))),
+        card('How customers paid', table([{ label: 'Method', value: r => paymentLabel(r.method) }, { label: 'Receipts', class: 'num', value: r => num(r.count) }, { label: 'Amount', class: 'num', value: r => money(r.total) }], s.by_payment || [], { empty: 'No sales.' }))),
       h('div', { class: 'grid-2' },
-        card('Best sellers', table([
-          { label: 'Product', value: r => r.name },
-          { label: 'Qty', class: 'num', value: r => num(r.quantity) },
-          { label: 'Sales', class: 'num', value: r => money(r.revenue) },
-          { label: 'Profit', class: 'num', value: r => money(r.profit) }
-        ], s.top_products || [], { empty: 'No sales.' })),
-        s.scope === 'shop' ? card('By staff member', table([
-          { label: 'Staff', value: r => r.name },
-          { label: 'Receipts', class: 'num', value: r => num(r.count) },
-          { label: 'Sales', class: 'num', value: r => money(r.total) }
-        ], s.by_cashier || [], { empty: 'No sales.' })) : null),
+        card('Best sellers', table([{ label: 'Product', value: r => r.name }, { label: 'Qty', class: 'num', value: r => num(r.quantity) }, { label: 'Sales', class: 'num', value: r => money(r.revenue) }, { label: 'Profit', class: 'num', value: r => money(r.profit) }], s.top_products || [], { empty: 'No sales.' })),
+        s.scope === 'shop' ? card('By staff member', table([{ label: 'Staff', value: r => r.name }, { label: 'Receipts', class: 'num', value: r => num(r.count) }, { label: 'Sales', class: 'num', value: r => money(r.total) }], s.by_cashier || [], { empty: 'No sales.' })) : null),
       byItem ? salesByItem(byItem, p) : null,
-      card(h('div', { class: 'row between' }, h('h2', null, 'Receipts'), h('button', { class: 'secondary small', onclick: () => exportSales(sales, p) }, 'Export CSV')),
-        table([
-          { label: 'Receipt', value: r => h('b', null, r.receipt_number) },
-          { label: 'Time', value: r => dateTime(r.created_at) },
-          { label: 'Staff', value: r => r.cashier?.full_name || '' },
-          { label: 'Customer', value: r => r.customers?.name || '' },
-          { label: 'Paid by', value: r => paymentLabel(r.payment_method) },
-          { label: 'Total', class: 'num', value: r => money(r.total) },
-          { label: 'Status', value: r => badge(r.status, r.status === 'completed' ? 'ok' : 'bad') },
-          { label: '', class: 'actions', value: r => h('div', { class: 'row' },
-            h('button', { class: 'link', onclick: async () => { try { printReceipt(await loadReceipt(db(), r.id)); } catch (e) { showError(e); } } }, 'Reprint'),
-            can.refund() && r.status === 'completed' ? h('button', { class: 'link danger', onclick: () => refund(r) }, 'Refund') : null) }
-        ], sales, { empty: 'No receipts in this period.' }),
-        sales.length === 1000 ? h('p', { class: 'muted pad' }, 'Showing the latest 1,000 receipts. Narrow the period to see more.') : null),
-      legacy && Number(legacy.lines) > 0 ? card('Imported history (previous system)',
-        h('p', null, `${num(legacy.lines)} sale lines from ${date(legacy.first_sale)} to ${date(legacy.last_sale)}, net ${money(legacy.net_sales)}. `,
-          Number(legacy.unmatched_lines) ? h('span', { class: 'warn' }, `${num(legacy.unmatched_lines)} lines did not match a product.`) : 'All lines matched products.'),
-        h('p', { class: 'muted' }, 'Imported history is used for shopping suggestions. It is not part of these totals or the accounts.')) : null);
+      receiptArchive(sales, p),
+      legacy && Number(legacy.lines) > 0 ? card('Imported history (previous system)', h('p', null, `${num(legacy.lines)} sale lines from ${date(legacy.first_sale)} to ${date(legacy.last_sale)}, net ${money(legacy.net_sales)}. `, Number(legacy.unmatched_lines) ? h('span', { class: 'warn' }, `${num(legacy.unmatched_lines)} lines did not match a product.`) : 'All lines matched products.'), h('p', { class: 'muted' }, 'Imported history is used for shopping suggestions. It is not part of these totals or the accounts.')) : null);
+  }
+
+  function receiptArchive(sales, p) {
+    return card(
+      h('div', { class: 'row between receipt-archive-head' },
+        h('div', null, h('h2', null, 'Receipt archive'), h('p', { class: 'muted small' }, `${num(sales.length)} saved transaction${sales.length === 1 ? '' : 's'} · newest first · filter by date above`)),
+        h('button', { class: 'secondary small', onclick: () => exportSales(sales, p) }, 'Export CSV')),
+      table([
+        { label: 'Receipt', value: r => h('b', null, r.receipt_number) },
+        { label: 'Date & time', value: r => dateTime(r.created_at) },
+        { label: 'Cashier', value: r => r.cashier?.full_name || '' },
+        { label: 'Customer', value: r => r.customers?.name || 'Walk-in' },
+        { label: 'Payment', value: r => paymentLabel(r.payment_method) },
+        { label: 'Total', class: 'num', value: r => money(r.total) },
+        { label: 'Status', value: r => badge(r.status, r.status === 'completed' ? 'ok' : 'bad') },
+        { label: 'Receipt', class: 'actions', value: r => h('div', { class: 'receipt-actions' },
+          h('button', { class: 'secondary small', onclick: async () => { try { printReceipt(await loadReceipt(db(), r.id)); } catch (e) { showError(e); } } }, 'Print'),
+          h('button', { class: 'primary small', onclick: async () => { try { downloadReceipt(await loadReceipt(db(), r.id)); } catch (e) { showError(e); } } }, 'Download')
+        ) }
+      ], sales, { empty: 'No receipts in this period.' }),
+      sales.length === 1000 ? h('p', { class: 'muted pad' }, 'Showing the latest 1,000 receipts. Narrow the period to see more.') : null,
+      h('div', { class: 'receipt-archive-note' }, h('b', null, 'Where receipts are kept: '), 'every completed sale is permanently recorded in the production Supabase sales and sale_items records. This archive reads those records, so a cashier or manager can find a receipt later by date, cashier, customer, payment method or receipt number.'))
+    );
   }
 
   function salesByItem(d, p) {
@@ -85,50 +79,23 @@ export async function render(root) {
       const q = search.value.trim().toLowerCase();
       if (view === 'items') {
         const rows = d.items.filter(r => !q || (r.name + ' ' + r.sku + ' ' + r.category).toLowerCase().includes(q));
-        clear(host, table([
-          { label: 'Product', value: r => h('div', null, h('b', null, r.name), h('small', { class: 'block muted' }, r.sku + ' · ' + r.category)) },
-          { label: 'Qty sold', class: 'num', value: r => num(r.quantity || 0) },
-          { label: 'Sales', class: 'num', value: r => money(r.revenue) },
-          { label: 'Cost', class: 'num', value: r => money(r.cost) },
-          { label: 'Profit', class: 'num', value: r => h('span', { class: Number(r.profit) < 0 ? 'bad' : '' }, money(r.profit)) },
-          { label: 'Margin', class: 'num', value: r => Number(r.revenue) > 0 ? num(Number(r.profit) / Number(r.revenue) * 100, 0) + '%' : '—' },
-          { label: 'Share', class: 'num', value: r => num(Number(r.revenue) / total * 100, 1) + '%' },
-          { label: 'Refunded', class: 'num', value: r => Number(r.refunded_qty) ? num(r.refunded_qty) : '' }
-        ], rows.slice(0, 300), { empty: 'No sales in this period.' }), rows.length > 300 ? h('p', { class: 'muted pad' }, `Showing 300 of ${rows.length}. Export CSV for all.`) : null);
+        clear(host, table([{ label: 'Product', value: r => h('div', null, h('b', null, r.name), h('small', { class: 'block muted' }, r.sku + ' · ' + r.category)) }, { label: 'Qty sold', class: 'num', value: r => num(r.quantity || 0) }, { label: 'Sales', class: 'num', value: r => money(r.revenue) }, { label: 'Cost', class: 'num', value: r => money(r.cost) }, { label: 'Profit', class: 'num', value: r => h('span', { class: Number(r.profit) < 0 ? 'bad' : '' }, money(r.profit)) }, { label: 'Margin', class: 'num', value: r => Number(r.revenue) > 0 ? num(Number(r.profit) / Number(r.revenue) * 100, 0) + '%' : '—' }, { label: 'Share', class: 'num', value: r => num(Number(r.revenue) / total * 100, 1) + '%' }, { label: 'Refunded', class: 'num', value: r => Number(r.refunded_qty) ? num(r.refunded_qty) : '' }], rows.slice(0, 300), { empty: 'No sales in this period.' }), rows.length > 300 ? h('p', { class: 'muted pad' }, `Showing 300 of ${rows.length}. Export CSV for all.`) : null);
       } else {
         const rows = d.categories.filter(r => !q || r.category.toLowerCase().includes(q));
-        clear(host, table([
-          { label: 'Category', value: r => r.category },
-          { label: 'Qty sold', class: 'num', value: r => num(r.quantity) },
-          { label: 'Sales', class: 'num', value: r => money(r.revenue) },
-          { label: 'Profit', class: 'num', value: r => money(r.profit) },
-          { label: 'Margin', class: 'num', value: r => Number(r.revenue) > 0 ? num(Number(r.profit) / Number(r.revenue) * 100, 0) + '%' : '—' },
-          { label: 'Share', class: 'num', value: r => num(Number(r.revenue) / total * 100, 1) + '%' }
-        ], rows, { empty: 'No sales in this period.' }));
+        clear(host, table([{ label: 'Category', value: r => r.category }, { label: 'Qty sold', class: 'num', value: r => num(r.quantity) }, { label: 'Sales', class: 'num', value: r => money(r.revenue) }, { label: 'Profit', class: 'num', value: r => money(r.profit) }, { label: 'Margin', class: 'num', value: r => Number(r.revenue) > 0 ? num(Number(r.profit) / Number(r.revenue) * 100, 0) + '%' : '—' }, { label: 'Share', class: 'num', value: r => num(Number(r.revenue) / total * 100, 1) + '%' }], rows, { empty: 'No sales in this period.' }));
       }
     };
-    search.addEventListener('input', drawT);
-    sel.addEventListener('change', () => { view = sel.value; drawT(); });
-    const exportBtn = h('button', { class: 'secondary small', onclick: () => view === 'items'
-      ? downloadCsv(`sales-by-item-${p.fromISO}-to-${p.toISO}.csv`, [['Product', 'SKU', 'Category', 'Qty', 'Sales', 'Cost', 'Profit', 'Refunded qty'], ...d.items.map(r => [r.name, r.sku, r.category, r.quantity || 0, r.revenue, r.cost, r.profit, r.refunded_qty])])
-      : downloadCsv(`sales-by-category-${p.fromISO}-to-${p.toISO}.csv`, [['Category', 'Qty', 'Sales', 'Profit'], ...d.categories.map(r => [r.category, r.quantity, r.revenue, r.profit])]) }, 'Export CSV');
+    search.addEventListener('input', drawT); sel.addEventListener('change', () => { view = sel.value; drawT(); });
+    const exportBtn = h('button', { class: 'secondary small', onclick: () => view === 'items' ? downloadCsv(`sales-by-item-${p.fromISO}-to-${p.toISO}.csv`, [['Product', 'SKU', 'Category', 'Qty', 'Sales', 'Cost', 'Profit', 'Refunded qty'], ...d.items.map(r => [r.name, r.sku, r.category, r.quantity || 0, r.revenue, r.cost, r.profit, r.refunded_qty])]) : downloadCsv(`sales-by-category-${p.fromISO}-to-${p.toISO}.csv`, [['Category', 'Qty', 'Sales', 'Profit'], ...d.categories.map(r => [r.category, r.quantity, r.revenue, r.profit])]) }, 'Export CSV');
     drawT();
     return card(h('div', { class: 'row between' }, h('h2', null, 'Sales by item'), h('div', { class: 'row' }, sel, exportBtn)), h('div', { class: 'toolbar' }, search), host);
   }
 
   function refund(r) {
-    formModal({
-      title: 'Refund ' + r.receipt_number, subtitle: money(r.total) + ' · ' + paymentLabel(r.payment_method) + '. Stock comes back and the books are reversed.',
-      fields: [{ name: 'reason', label: 'Reason', required: true, full: true, placeholder: 'e.g. Customer returned expired item' }],
-      submitLabel: 'Refund whole sale',
-      onSubmit: async v => { await rpc('refund_sale', { p_sale_id: r.id, p_reason: v.reason }); toast('Refunded ' + r.receipt_number + '. Give the customer ' + money(r.total) + '.'); await load(); }
-    });
+    formModal({ title: 'Refund ' + r.receipt_number, subtitle: money(r.total) + ' · ' + paymentLabel(r.payment_method) + '. Stock comes back and the books are reversed.', fields: [{ name: 'reason', label: 'Reason', required: true, full: true, placeholder: 'e.g. Customer returned expired item' }], submitLabel: 'Refund whole sale', onSubmit: async v => { await rpc('refund_sale', { p_sale_id: r.id, p_reason: v.reason }); toast('Refunded ' + r.receipt_number + '. Give the customer ' + money(r.total) + '.'); await load(); } });
   }
-
   function exportSales(sales, p) {
-    downloadCsv(`sales-${p.fromISO}-to-${p.toISO}.csv`, [['Receipt', 'Time', 'Staff', 'Customer', 'Payment', 'Total', 'Cost of goods', 'Status'],
-      ...sales.map(r => [r.receipt_number, r.created_at, r.cashier?.full_name || '', r.customers?.name || '', r.payment_method, r.total, r.cost_of_goods, r.status])]);
+    downloadCsv(`sales-${p.fromISO}-to-${p.toISO}.csv`, [['Receipt', 'Time', 'Staff', 'Customer', 'Payment', 'Total', 'Cost of goods', 'Status'], ...sales.map(r => [r.receipt_number, r.created_at, r.cashier?.full_name || '', r.customers?.name || '', r.payment_method, r.total, r.cost_of_goods, r.status])]);
   }
-
   await load();
 }
