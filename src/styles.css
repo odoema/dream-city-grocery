@@ -95,7 +95,7 @@ progress { width: 100%; height: 14px; accent-color: var(--brand); }
 
 /* ------------------------------------------------------------------ shell */
 .shell { display: flex; min-height: 100vh; }
-.sidebar { width: var(--sidebar-w, 236px); flex: 0 0 var(--sidebar-w, 236px); background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; padding: 1rem .75rem; }
+.sidebar { width: var(--sidebar-w, 264px); flex: 0 0 var(--sidebar-w, 264px); background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; padding: 1rem .75rem; }
 .brand { display: flex; gap: .65rem; align-items: center; padding: .25rem .4rem 1rem; border-bottom: 1px solid var(--line); margin-bottom: .75rem; }
 .brand img { width: 44px; height: 44px; object-fit: contain; border-radius: 10px; background: var(--white); }
 .brand b { display: block; line-height: 1.2; }
@@ -387,9 +387,6 @@ details.journal summary { display: flex; gap: 1rem; cursor: pointer; flex-wrap: 
 .chips .chip { flex-shrink: 0; white-space: nowrap; }
 .product-grid { align-items: stretch; }
 .p-photo { aspect-ratio: auto; height: 84px; object-fit: contain; background: var(--white); }
-@media (max-height: 760px) and (min-width: 861px) {
-  .sidebar .brand .brand-logo { max-height: 120px; }
-}
 
 /* ------------------------------------------------------------------ resizable column borders */
 .resizer { flex: 0 0 auto; position: relative; z-index: 5; touch-action: none; outline: none; }
@@ -407,4 +404,26 @@ body.resizing-y, body.resizing-y * { cursor: row-resize !important; }
 @media (max-width: 860px) {
   .resizer { display: none; }
   .pos { grid-template-columns: 1fr; }
+}
+
+/* ------------------------------------------------------------------ menu: golden-ratio proportions
+   φ = 1.618. Base unit 16px → icon 26px (16·φ), row 52px (26·2), gap 10px (16/φ),
+   logo frame is a golden rectangle (width : height = φ : 1). */
+:root { --phi: 1.618; --sidebar-w: 264px; }
+.sidebar { padding: 1.1rem .85rem; }
+.sidebar .brand { padding: 0 0 1.1rem; margin-bottom: .85rem; }
+.sidebar .brand .brand-logo { display: block; width: 100%; height: auto; aspect-ratio: 1.618 / 1; max-height: none; object-fit: contain;
+  background: var(--white); border-radius: 16px; padding: .55rem .7rem; image-rendering: -webkit-optimize-contrast; box-shadow: 0 2px 10px rgba(1, 1, 1, .18); }
+.sidebar nav { gap: 4px; padding-right: 2px; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .35) transparent; }
+.sidebar .nav-link { min-height: 52px; gap: .618rem; padding: .5rem .85rem; border-radius: 12px; font-size: 1.06rem; font-weight: 600; letter-spacing: .01em; }
+.nav-icon { width: 26px; height: 26px; flex: 0 0 26px; display: inline-grid; place-items: center; }
+.nav-icon svg { width: 26px; height: 26px; display: block; }
+.sidebar .nav-link .nav-icon { color: var(--orange); }
+.sidebar .nav-link.active .nav-icon, .sidebar .nav-link:hover .nav-icon { color: inherit; }
+.sidebar .user-chip { padding-top: .85rem; }
+.sidebar .avatar { width: 42px; height: 42px; font-size: .95rem; }
+.bottom-nav .nav-icon, .bottom-nav .nav-icon svg { width: 24px; height: 24px; }
+.brand-logo-top { height: 44px; }
+@media (max-height: 700px) and (min-width: 861px) {
+  .sidebar .nav-link { min-height: 44px; }
 }
