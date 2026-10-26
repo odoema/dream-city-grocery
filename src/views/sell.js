@@ -4,11 +4,13 @@ import { state, can } from '../lib/state.js';
 import { money, num, parseAmount, paymentLabel } from '../lib/format.js';
 import { toast, showError, modal, withBusy, formModal, confirmDialog } from '../lib/ui.js';
 import { printReceipt } from '../lib/receipt.js';
+import { imageUrls } from '../lib/images.js';
 
 const CART_KEY = 'pos.cart.v2';
 
 export async function render(root) {
   let products = [];
+  let photos = new Map();
   let customers = [];
   let categories = [];
   let activeCategory = '';
@@ -54,7 +56,7 @@ export async function render(root) {
   // ------------------------------------------------------------ data
   async function load() {
     const [p, c, cats] = await Promise.all([
-      run(db().from('products').select('id,name,sku,barcode,selling_price,quantity_on_hand,reorder_level,unit,sold_by_weight,track_stock,available_for_sale,category_id,categories(name)').eq('active', true).order('name').limit(5000)),
+      run(db().from('products').select('id,name,sku,barcode,selling_price,quantity_on_hand,reorder_level,unit,sold_by_weight,track_stock,available_for_sale,category_id,image_path,categories(name)').eq('active', true).order('name').limit(5000)),
       run(db().from('customers').select('id,name,phone,credit_limit,active').eq('active', true).order('name').limit(2000)),
       run(db().from('categories').select('id,name').eq('active', true).order('name'))
     ]);
@@ -67,6 +69,7 @@ export async function render(root) {
       return { ...line, listed: Number(prod.selling_price), price: line.price === line.listed ? Number(prod.selling_price) : line.price, stock: Number(prod.quantity_on_hand), track: prod.track_stock };
     });
     renderChips(); renderGrid(); renderCustomers(); renderCart();
+    imageUrls(products.map(x => x.image_path)).then(m => { photos = m; if (m.size) renderGrid(); }).catch(() => {});
   }
 
   // ------------------------------------------------------------ products
@@ -97,7 +100,9 @@ export async function render(root) {
     const stock = Number(p.quantity_on_hand);
     const out = p.track_stock && stock <= 0;
     const low = p.track_stock && !out && stock <= Number(p.reorder_level || 0);
-    return h('button', { type: 'button', class: 'product-card' + (out ? ' out' : ''), disabled: out, onclick: () => add(p) },
+    const photo = p.image_path && photos.get(p.image_path);
+    return h('button', { type: 'button', class: 'product-card' + (out ? ' out' : '') + (photo ? ' has-photo' : ''), disabled: out, onclick: () => add(p) },
+      photo ? h('img', { class: 'p-photo', src: photo, alt: '', loading: 'lazy' }) : null,
       h('span', { class: 'p-name' }, p.name),
       h('span', { class: 'p-meta' }, p.sku),
       h('span', { class: 'p-price' }, money(p.selling_price), p.sold_by_weight ? h('small', null, ' / ' + (p.unit || 'kg')) : null),
