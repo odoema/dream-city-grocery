@@ -17,14 +17,16 @@
 
 /* ================================================================
    CASH REGISTER / TILL
-   The right side is a real cashier register: a wide item list first,
-   then totals, payment/customer controls, and one large checkout action.
+   The sale register is intentionally the dominant workspace.
+   Desktop: roughly 28% catalogue / 72% current-sale register.
 ================================================================ */
 .pos {
-  grid-template-columns: minmax(0, 1fr) 520px;
+  grid-template-columns: minmax(280px, 28%) minmax(0, 72%);
   gap: 1rem;
   align-items: start;
 }
+
+.pos-products { min-width: 0; }
 
 .pos-cart {
   position: sticky;
@@ -32,9 +34,9 @@
   display: flex;
   flex-direction: column;
   height: calc(100vh - 2rem);
-  min-height: 560px;
+  min-height: 600px;
   max-height: calc(100vh - 2rem);
-  padding: 1rem;
+  padding: 1rem 1.15rem;
   overflow: hidden;
 }
 
@@ -44,91 +46,104 @@
   padding-bottom: .65rem;
   border-bottom: 2px solid var(--orange);
 }
-.pos-cart .card-head h2 { font-size: 1.3rem; }
+.pos-cart .card-head h2 { font-size: 1.35rem; }
 
-/* IMPORTANT: keep the sale lines visible and give them the main register space. */
+/* The basket itself is the scrolling area. It must never disappear. */
 .pos-cart > .cart-lines {
   display: block;
-  flex: 1 1 auto;
-  min-height: 180px;
-  height: auto;
+  flex: 1 1 0;
+  min-height: 220px;
+  height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 .25rem 0 0;
+  padding: 0 .4rem 0 0;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
+  scrollbar-width: auto;
+}
+
+.pos-cart > .cart-lines::-webkit-scrollbar { width: 12px; }
+.pos-cart > .cart-lines::-webkit-scrollbar-thumb {
+  background: var(--brand);
+  border-radius: 10px;
 }
 
 .cart-line {
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: .45rem .75rem;
-  padding: .9rem .15rem;
+  gap: .5rem 1rem;
+  padding: .95rem .25rem;
 }
-.cl-main b { font-size: 1.02rem; }
-.cl-main small { font-size: .82rem; }
-.qty { gap: .3rem; }
-.qty button { width: 42px; height: 42px; font-size: 1.25rem; }
-.qty input { width: 68px; min-height: 42px; font-weight: 700; }
-.cl-total { font-size: 1.02rem; }
+.cl-main b { font-size: 1.08rem; }
+.cl-main small { font-size: .85rem; }
+.qty { gap: .35rem; }
+.qty button { width: 44px; height: 44px; font-size: 1.3rem; }
+.qty input { width: 72px; min-height: 44px; font-weight: 700; }
+.cl-total { font-size: 1.05rem; }
 
 .cart-totals {
   flex: 0 0 auto;
-  margin: .6rem 0 .25rem;
+  margin: .65rem 0 .25rem;
   padding: .65rem .1rem 0;
   border-top: 1px solid var(--line);
 }
 .cart-totals .grand {
-  font-size: 1.65rem;
+  font-size: 1.7rem;
   padding-top: .55rem;
 }
 
 .cart-form {
   flex: 0 0 auto;
-  padding: .7rem 0 .6rem;
+  padding: .7rem 0 .65rem;
   gap: .55rem;
   border-top: 1px solid var(--line);
 }
 
 .segmented {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: .4rem;
+  grid-template-columns: repeat(5, minmax(90px, 1fr));
+  gap: .45rem;
 }
 .segmented button {
-  min-height: 46px;
-  padding: .45rem .3rem;
-  font-size: .82rem;
+  min-height: 48px;
+  padding: .5rem .4rem;
+  font-size: .9rem;
   border-radius: 9px;
 }
 
 .customer-row {
   flex-direction: row;
   align-items: center;
-  gap: .55rem;
+  gap: .65rem;
 }
-.customer-row > label { flex: 0 0 72px; }
+.customer-row > label { flex: 0 0 78px; }
 .customer-row .with-action { flex: 1; }
 
 .discount-row {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
+  grid-template-columns: 78px minmax(0, 1fr);
   align-items: center;
-  gap: .55rem;
+  gap: .65rem;
 }
 .tender-row { grid-template-columns: minmax(0, 1fr) auto; }
 
 .pos-cart > .primary.big {
   flex: 0 0 auto;
-  min-height: 62px;
-  font-size: 1.18rem;
+  min-height: 66px;
+  font-size: 1.25rem;
   border-radius: 10px;
-  margin-top: .1rem;
+  margin-top: .15rem;
 }
 
-/* Medium desktop: still a proper till, without crushing the product catalogue. */
+/* Large desktop: keep Current Sale at about three quarters of the POS. */
+@media (min-width: 1201px) {
+  .pos { grid-template-columns: minmax(280px, 27%) minmax(0, 73%); }
+}
+
+/* Medium desktop: still give the register at least half the workspace. */
 @media (min-width: 861px) and (max-width: 1200px) {
-  .pos { grid-template-columns: minmax(0, 1fr) 460px; }
-  .product-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-  .segmented button { font-size: .75rem; }
+  .pos { grid-template-columns: minmax(300px, 42%) minmax(0, 58%); }
+  .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .segmented { grid-template-columns: repeat(3, minmax(90px, 1fr)); }
+  .segmented button { font-size: .8rem; }
 }
 
 /* Mobile/tablet: stack the register below the catalogue. */
@@ -149,6 +164,7 @@
 
   .pos-cart > .cart-lines {
     flex: 0 0 auto;
+    height: auto;
     min-height: 320px;
     max-height: 52vh;
     overflow-y: auto;
