@@ -7,7 +7,7 @@ import { showError, toast } from './lib/ui.js';
 import { renderLogin } from './views/login.js';
 import { renderClaimOwner, renderSetupWizard } from './views/setup.js';
 import { startRouter, stopRouter } from './router.js';
-import { applySavedSizes, makeResizer } from './lib/resize.js';
+import { applySavedSizes } from './lib/resize.js';
 import { icon, trimLogo } from './lib/icons.js';
 
 applySavedSizes();
@@ -114,6 +114,7 @@ export async function signOut() {
 // ------------------------------------------------------------------ shell
 export const NAV = [
   { path: 'home', label: 'Home', icon: 'home', roles: null },
+  { path: 'executive', label: 'Dashboard', icon: 'dashboard', roles: ['owner', 'manager', 'accountant'] },
   { path: 'sell', label: 'Sell', icon: 'sell', roles: null },
   { path: 'products', label: 'Products', icon: 'products', roles: null },
   { path: 'customers', label: 'Customers', icon: 'customers', roles: null },
@@ -149,9 +150,7 @@ function renderShell() {
     items.filter(n => ['home', 'sell', 'products', 'buy'].includes(n.path)).map(navLink),
     h('button', { class: 'nav-link', onclick: () => document.body.classList.toggle('drawer-open') }, h('span', { class: 'nav-icon', html: icon('menu') }), h('span', null, 'More')));
   const scrim = h('div', { class: 'scrim', onclick: () => document.body.classList.remove('drawer-open') });
-  const sideHandle = h('div', { class: 'resizer resizer-x sidebar-resizer', 'aria-label': 'Resize menu' });
-  makeResizer(sideHandle, { name: '--sidebar-w', min: () => 180, max: () => Math.min(420, window.innerWidth * 0.4), compute: e => e.clientX });
-  clear(app, h('div', { class: 'shell' }, drawer, sideHandle, scrim, h('div', { class: 'content' }, topbar, main), bottom));
+  clear(app, h('div', { class: 'shell' }, drawer, scrim, h('div', { class: 'content' }, topbar, main), bottom));
   // Sharper, larger logo: trim its white margin so the artwork fills the frame.
   for (const img of app.querySelectorAll('.brand-logo, .brand-logo-top')) trimLogo(img.src).then(src => { if (src) img.src = src; });
   startRouter(main, items);
