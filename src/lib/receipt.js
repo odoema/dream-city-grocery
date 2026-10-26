@@ -3,7 +3,7 @@ import { money, num, dateTime, paymentLabel } from './format.js';
 import { barcodeSvg } from './barcode.js';
 import { documentHtml, printHtml } from './documents.js';
 
-const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const esc = v => String(v ?? '').replace(/[&<>\"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', "'": '&#39;' }[c]));
 
 // receipt: { receipt_number, created_at, cashier, customer, payment_method, items:[{name, sku, qty, price, line_total}],
 //            subtotal, discount, total, tendered, change, status }
@@ -12,7 +12,10 @@ export function receiptHtml(r) {
   if (s.receipt_width === 'a4') return a4Receipt(r);
   const narrow = s.receipt_width === '58mm';
   const width = narrow ? '54mm' : '72mm';
-  const logo = s.logo_url ? `<img class="logo" src="${esc(new URL(s.logo_url, location.href).href)}" alt="${esc(s.business_name || 'Shop')}">` : '';
+  let logo = '';
+  if (s.logo_url) {
+    try { logo = `<img class="logo" src="${esc(new URL(s.logo_url, location.href).href)}" alt="${esc(s.business_name || 'Shop')}">`; } catch { /* ignore invalid logo URL */ }
+  }
   const count = r.items.reduce((n, i) => n + Number(i.qty), 0);
   const rows = r.items.map(i => `<tr><td class="name">${esc(i.name)}${i.sku ? `<span class="sku">${esc(i.sku)}</span>` : ''}</td><td class="r amount">${esc(money(i.line_total))}</td></tr><tr class="detail"><td>${num(i.qty)} × ${esc(money(i.price))}</td><td></td></tr>`).join('');
   let code = '';
@@ -29,7 +32,6 @@ export function receiptHtml(r) {
   .shop { font-weight: 800; font-size: 1.22em; text-align: center; text-transform: uppercase; letter-spacing: .035em; }
   .tag { text-align: center; font-size: .86em; margin-top: 1px; }
   .info { text-align: center; font-size: .88em; line-height: 1.3; }
-  .header-rule { border: 0; border-top: 2px solid #000; margin: 5px 0 4px; }
   .title { text-align: center; font-weight: 800; font-size: 1.05em; letter-spacing: .14em; border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 4px 0; margin: 5px 0; }
   table { width: 100%; border-collapse: collapse; }
   td { padding: 1px 0; vertical-align: top; }
@@ -99,6 +101,18 @@ function a4Receipt(r) {
 }
 
 export function printReceipt(r) { printHtml(receiptHtml(r)); }
+
+export function downloadReceipt(r) {
+  const blob = new Blob([receiptHtml(r)], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${String(r.receipt_number || 'receipt').replace(/[^a-z0-9_-]+/gi, '-')}.html`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 // Load a stored sale into receipt shape.
 export async function loadReceipt(db, saleId) {
