@@ -46,7 +46,7 @@ async function loadPublicProfile() {
 export function applyBranding(p) {
   const name = p?.business_name || 'Grocery POS';
   document.title = name;
-  const color = /^#[0-9a-f]{6}$/i.test(p?.primary_color || '') ? p.primary_color : '#176B45';
+  const color = /^#[0-9a-f]{6}$/i.test(p?.primary_color || '') ? p.primary_color : '#16376A';
   document.documentElement.style.setProperty('--brand', color);
   document.querySelector('meta[name=theme-color]')?.setAttribute('content', color);
 }
@@ -128,8 +128,8 @@ function renderShell() {
   const items = NAV.filter(n => !n.roles || n.roles.includes(state.profile.role));
   const navLink = n => h('a', { href: '#/' + n.path, class: 'nav-link', dataset: { path: n.path } }, h('span', { class: 'nav-icon', 'aria-hidden': 'true' }, n.icon), h('span', null, n.label));
   const brand = h('div', { class: 'brand' },
-    s.logo_url ? h('img', { src: s.logo_url, alt: '' }) : h('div', { class: 'brand-mark' }, (s.business_name || 'G').slice(0, 1)),
-    h('div', null, h('b', null, s.business_name || 'Grocery'), s.tagline ? h('small', null, s.tagline) : null));
+    s.logo_url ? h('img', { src: s.logo_url, alt: s.business_name || 'Logo', class: 'brand-logo' }) : h('div', { class: 'brand-mark' }, (s.business_name || 'G').slice(0, 1)),
+    s.logo_url ? null : h('div', null, h('b', null, s.business_name || 'Grocery'), s.tagline ? h('small', null, s.tagline) : null));
   const user = h('div', { class: 'user-chip' },
     h('div', { class: 'avatar' }, initials(state.profile.full_name || state.session.user.email)),
     h('div', null, h('b', null, state.profile.full_name || state.session.user.email), h('small', null, roleLabel(state.profile.role))),
@@ -138,6 +138,7 @@ function renderShell() {
   const main = h('main', { id: 'view', tabindex: '-1' });
   const topbar = h('header', { class: 'topbar' },
     h('button', { class: 'icon-btn menu-btn', 'aria-label': 'Open menu', onclick: () => document.body.classList.toggle('drawer-open') }, '☰'),
+    s.logo_url ? h('img', { src: s.logo_url, alt: '', class: 'brand-logo-top' }) : null,
     h('b', null, s.business_name || 'Grocery'),
     h('a', { class: 'primary small', href: '#/sell' }, 'Sell'));
   const bottom = h('nav', { class: 'bottom-nav', 'aria-label': 'Quick' },
