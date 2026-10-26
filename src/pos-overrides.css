@@ -1,0 +1,52 @@
+/* POS usability refinements. Kept separate so existing views remain untouched. */
+.product-grid {
+  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+  gap: .75rem;
+}
+.product-card {
+  min-height: 156px;
+  padding: .85rem;
+  gap: .3rem;
+}
+.product-card .p-photo { aspect-ratio: 5 / 4; }
+.p-name { font-size: .98rem; }
+.p-meta { font-size: .78rem; }
+.p-price { font-size: 1.05rem; }
+.p-stock { font-size: .78rem; }
+
+/* Current sale: taller cart area so more line items are visible at once. */
+.pos-cart { min-height: calc(100vh - 2rem); }
+.cart-lines { min-height: 260px; }
+.cart-line { padding: .75rem 0; }
+.cl-main b { font-size: .96rem; }
+.qty button { width: 38px; height: 38px; }
+.qty input { width: 70px; min-height: 38px; }
+
+/* Receipt archive actions stay together and line up cleanly. */
+.receipt-actions {
+  display: inline-flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: .4rem;
+  flex-wrap: nowrap;
+}
+.receipt-actions .primary,
+.receipt-actions .secondary { min-width: 78px; }
+
+@media (min-width: 1400px) {
+  .product-grid { grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); }
+}
+@media (max-width: 1100px) {
+  .product-grid { grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); }
+}
+@media (max-width: 860px) {
+  .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+  .product-card { min-height: 148px; }
+  .pos-cart { min-height: 0; }
+  .cart-lines { min-height: 220px; }
+  .receipt-actions { justify-content: flex-start; }
+}
+@media (max-width: 430px) {
+  .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .product-card { min-height: 138px; padding: .65rem; }
+}
