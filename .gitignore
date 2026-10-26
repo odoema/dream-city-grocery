@@ -1,7 +1,7 @@
+node_modules/
+dist/
 .env
 .env.*
 !.env.example
-node_modules/
-.next/
-dist/
 .DS_Store
+tests/screens/

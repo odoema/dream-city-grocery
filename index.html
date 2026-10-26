@@ -2,80 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#123F2C" />
-  <title>Dream City Grocery | POS</title>
-  <link rel="icon" href="public/dream_logo.jpeg" type="image/jpeg" />
-  <link rel="stylesheet" href="styles.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#176B45" />
+  <meta name="description" content="Grocery point of sale, stock, purchasing and accounts." />
+  <title>Grocery POS</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
 </head>
 <body>
-  <aside class="sidebar">
-    <div class="brand"><img src="public/dream_logo.jpeg" alt="Dream City — Empowering Communities" /><div><b>Dream City</b><span>Grocery</span></div></div>
-    <div class="nav-label">WORKSPACE</div>
-    <button class="nav active" data-view="dashboard">▦ <span>Dashboard</span></button>
-    <button class="nav" data-view="pos">▣ <span>Point of Sale</span></button>
-    <button class="nav" data-view="inventory">▤ <span>Inventory</span></button>
-    <button class="nav" data-view="customers">♙ <span>Customers</span></button>
-    <button class="nav" data-view="stocktake">✓ <span>Stock Taking</span></button>
-    <button class="nav" data-view="purchases">⇩ <span>Purchases</span></button>
-    <button class="nav" data-view="accounting">▥ <span>Accounting</span></button>
-    <button class="nav" data-view="reports">▧ <span>Reports</span></button>
-    <div class="sidebar-bottom"><span id="connection-dot" class="online-dot"></span> <span id="connection-label">Live system configured</span> <small id="connection-detail">Sign in to verify live data access</small></div>
-  </aside>
-  <main class="main">
-    <header class="topbar"><div><p class="eyebrow">DREAM CITY GROCERY</p><h1 id="page-title">Owner dashboard</h1></div><div class="top-actions"><span id="staff-status" class="date-pill">Not signed in</span><span class="date-pill" id="today"></span><button id="sign-out" class="secondary hidden" type="button">Sign out</button><div class="avatar">DC</div></div></header>
-    <section id="auth-panel" class="auth-shell" aria-labelledby="auth-title">
-      <div class="auth-story">
-        <div class="auth-brand"><img src="public/dream_logo.jpeg" alt="Dream City — Empowering Communities" /><span>Dream City <b>Grocery</b></span></div>
-        <span class="auth-kicker"><i></i> YOUR SHOP. IN GOOD HANDS.</span>
-        <h2>Every good day<br>starts <em>fresh.</em></h2>
-        <p>A calmer, smarter way to run your store — from the first sale to the last stock count.</p>
-        <div class="auth-benefits">
-          <div><span class="benefit-icon">↗</span><span><b>Know your numbers</b><small>Sales and performance at a glance</small></span></div>
-          <div><span class="benefit-icon">▦</span><span><b>Keep stock in control</b><small>Inventory, purchases and stocktaking</small></span></div>
-          <div><span class="benefit-icon">✓</span><span><b>Work with confidence</b><small>Role-based access for your team</small></span></div>
-        </div><div class="auth-story-footer">✳ &nbsp; Good food builds better communities.</div>
-      </div>
-      <div class="auth-card-wrap"><div class="auth-card">
-        <div class="mobile-auth-brand"><img src="public/dream_logo.jpeg" alt="Dream City Grocery logo">Dream City <b>Grocery</b></div>
-        <div class="auth-card-heading"><span class="auth-lock">⌑</span><p class="eyebrow">STAFF PORTAL</p><h2 id="auth-title">Welcome back</h2><p class="muted">Sign in to continue to your workspace.</p></div>
-        <form id="sign-in-form" class="auth-form">
-          <label for="login-email">Email address</label><input id="login-email" class="search" type="email" autocomplete="username" placeholder="you@dreamcity.com" required>
-          <div class="password-label"><label for="login-password">Password</label><button id="forgot-password" class="auth-link" type="button">Forgot password?</button></div>
-          <div class="password-field"><input id="login-password" class="search" type="password" autocomplete="current-password" placeholder="Enter your password" required><button id="toggle-password" class="password-toggle" type="button" aria-label="Show password" aria-pressed="false">Show</button></div>
-          <button id="sign-in-button" class="primary auth-submit" type="submit"><span>Sign in securely</span><span aria-hidden="true">→</span></button>
-        </form>
-        <form id="reset-request-form" class="auth-form hidden"><button id="back-to-sign-in" class="auth-link back-link" type="button">← Back to sign in</button><h3>Reset your password</h3><p class="muted">We'll email you a secure link to choose a new password.</p><label for="reset-email">Work email address</label><input id="reset-email" class="search" type="email" autocomplete="email" placeholder="you@dreamcity.com" required><button id="send-reset-link" class="primary auth-submit" type="submit">Send reset link →</button></form>
-        <form id="new-password-form" class="auth-form hidden"><h3>Choose a new password</h3><p class="muted">Use at least 8 characters that you don't use elsewhere.</p><label for="new-password">New password</label><input id="new-password" class="search" type="password" autocomplete="new-password" minlength="8" required><label for="confirm-password">Confirm new password</label><input id="confirm-password" class="search" type="password" autocomplete="new-password" minlength="8" required><button id="save-new-password" class="primary auth-submit" type="submit">Save new password →</button></form>
-        <p id="auth-message" role="status" aria-live="polite" class="fine-print"></p>
-        <div id="config-warning" class="notice hidden"><b>Setup required</b><span>Configure the dedicated Supabase project URL and publishable/anon key in supabase-config.js. Never put a service-role key in this website.</span></div>
-        <div class="auth-security">▣ &nbsp; Secure staff access &nbsp; · &nbsp; Dream City Grocery</div>
-      </div><p class="auth-help">Need access? Contact your store administrator.</p></div>
-    </section>
-    <section id="dashboard-view" class="view hidden">
-      <div class="welcome"><div><h2>Good evening 👋</h2><p>Here's what's happening in your shop.</p></div><button class="primary" data-goto="pos">＋ New sale</button></div>
-      <div class="notice"><b>Prototype preview</b><span>Figures below are sample data. Connect Supabase before using for real transactions.</span></div>
-      <div class="metrics">
-        <article class="metric"><div class="metric-top"><span>Today's sales</span><span class="metric-icon blue">↗</span></div><strong>UGX 2,450,000</strong><small class="positive">↑ 8.4% <span>vs yesterday</span></small></article>
-        <article class="metric"><div class="metric-top"><span>Gross profit</span><span class="metric-icon gold">◈</span></div><strong>UGX 620,000</strong><small class="muted">Sample calculation</small></article>
-        <article class="metric"><div class="metric-top"><span>Transactions</span><span class="metric-icon blue">▣</span></div><strong>87</strong><small class="positive">Across all payment types</small></article>
-        <article class="metric"><div class="metric-top"><span>Low-stock items</span><span class="metric-icon red">!</span></div><strong>7 products</strong><small class="warning-text">Needs attention</small></article>
-      </div>
-      <div class="dashboard-grid"><article class="panel sales-panel"><div class="panel-heading"><div><h3>Sales overview</h3><p>Sample daily revenue · UGX</p></div><span class="tag">Last 7 days</span></div><div class="chart" aria-label="Sample sales chart"><div class="y-labels"><span>3M</span><span>2M</span><span>1M</span><span>0</span></div><div class="bars"><div class="bar-wrap"><i style="height:43%"></i><span>Fri</span></div><div class="bar-wrap"><i style="height:58%"></i><span>Sat</span></div><div class="bar-wrap"><i style="height:47%"></i><span>Sun</span></div><div class="bar-wrap"><i style="height:72%"></i><span>Mon</span></div><div class="bar-wrap"><i style="height:63%"></i><span>Tue</span></div><div class="bar-wrap"><i style="height:86%"></i><span>Wed</span></div><div class="bar-wrap today-bar"><i style="height:76%"></i><span>Thu</span></div></div></div></article>
-      <article class="panel"><div class="panel-heading"><div><h3>Stock alerts</h3><p>Sample inventory warnings</p></div><button class="text-button" data-goto="inventory">View all</button></div><div id="stock-alerts" class="stock-alerts"></div></article></div>
-      <article class="panel recent-panel"><div class="panel-heading"><div><h3>Recent transactions</h3><p>Illustrative activity feed</p></div><button class="text-button" data-goto="reports">All transactions</button></div><div class="table-wrap"><table><thead><tr><th>Receipt</th><th>Time</th><th>Cashier</th><th>Payment</th><th>Amount</th><th>Status</th></tr></thead><tbody id="recent-sales"></tbody></table></div></article>
-    </section>
-    <section id="pos-view" class="view hidden"><div class="pos-layout"><div class="panel products-panel"><div class="panel-heading"><div><h3>Products</h3><p>Select items to add them to the sale</p></div><span class="tag">Live catalogue</span></div><input id="product-search" class="search" placeholder="⌕  Search product or SKU…" /><div id="product-grid" class="product-grid"></div></div><div class="panel cart-panel"><div class="panel-heading"><div><h3>Current sale</h3><p id="cart-count">0 items</p></div><div><button id="add-customer" class="text-button" type="button">＋ Customer</button><button id="clear-cart" class="text-button" type="button">Clear</button></div></div><div id="cart-items" class="cart-items"><div class="empty-cart">Your cart is empty.<br/>Choose a product to begin.</div></div><div class="cart-summary"><div><span>Subtotal</span><b id="subtotal">UGX 0</b></div><div><span>Tax</span><b>UGX 0 (disabled)</b></div><div id="discount-row" class="hidden"><span>Authorized discount</span><b id="discount-value">UGX 0</b></div><label for="customer-select" id="customer-label" class="hidden">Customer (required for credit)</label><select id="customer-select" class="hidden"><option value="">Select customer…</option></select><div class="total-row"><span>Total due</span><strong id="total">UGX 0</strong></div><label for="payment-method">Payment method</label><select id="payment-method"><option>Cash</option><option>Mobile Money</option><option>Card</option><option>Credit</option></select><button id="checkout" class="primary full" disabled>Complete sale</button><button id="print-last-receipt" class="secondary full hidden" type="button">Print last receipt</button><p id="checkout-note" class="fine-print">Sign in to load live products and complete a sale.</p></div></div></div></section>
-    <section id="inventory-view" class="view hidden"><div class="welcome"><div><h2>Inventory</h2><p>Products, buying/selling prices and reorder levels.</p></div><button class="primary" id="add-product">＋ Add product</button></div><article class="panel"><div class="panel-heading"><div><h3>Product catalogue</h3><p>Live database — UGX</p></div><input id="inventory-search" class="search compact" placeholder="Search products…" /></div><div class="table-wrap"><table><thead><tr><th>SKU</th><th>Product</th><th>Category</th><th>Buy price</th><th>Sell price</th><th>In stock</th><th>Reorder at</th><th>Status</th><th>Actions</th></tr></thead><tbody id="inventory-table"></tbody></table></div></article></section>
-    <section id="customers-view" class="view hidden"><div class="welcome"><div><h2>Customers</h2><p>Customer directory and credit limits. Historical sales are retained when a customer is deactivated.</p></div><button class="primary" id="manage-add-customer" type="button">＋ Add customer</button></div><article class="panel"><div class="panel-heading"><div><h3>Customer directory</h3><p>Manage customer details and active status</p></div></div><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Phone</th><th>Credit limit</th><th>Status</th><th>Actions</th></tr></thead><tbody id="customers-table"></tbody></table></div></article></section>
-    <section id="stocktake-view" class="view hidden"><div class="welcome"><div><h2>Stock Taking & Reconciliation</h2><p>Count physical stock, compare it with the system, and post approved adjustments to inventory and accounting.</p></div><div><button class="secondary" id="refresh-stocktake" type="button">Refresh</button> <button class="primary" id="start-stocktake" type="button">＋ Start stocktake</button> <button class="secondary" id="cancel-stocktake" type="button" disabled>Cancel session</button> <button class="primary" id="finalize-stocktake" type="button" disabled>Approve & post adjustments</button></div></div><div class="notice"><b>Before you begin</b><span>First record Dorcas's new goods in Purchases → Receive goods / invoice. Then pause sales and receiving while counting. This session captures a stock snapshot; if quantities change during counting, the session must be cancelled and restarted.</span></div><div id="stocktake-summary" class="metrics"></div><article class="panel"><div class="panel-heading"><div><h3>Physical count</h3><p>Enter the quantity actually on the shelf, including zero when sold out. Save each count.</p></div><input id="stocktake-search" class="search compact" placeholder="Search SKU or product…" /></div><div class="table-wrap"><table><thead><tr><th>SKU</th><th>Product</th><th>Unit</th><th>System qty</th><th>Counted qty</th><th>Variance</th><th>Count status</th><th>Action</th></tr></thead><tbody id="stocktake-items"><tr><td colspan="8">Start or load a stock-taking session.</td></tr></tbody></table></div></article><article class="panel"><div class="panel-heading"><div><h3>Recent stock-taking sessions</h3><p>Completed sessions remain in the audit trail.</p></div></div><div class="table-wrap"><table><thead><tr><th>Session</th><th>Started</th><th>Status</th><th>Products</th><th>Completed</th></tr></thead><tbody id="stocktake-history"><tr><td colspan="5">Loading sessions…</td></tr></tbody></table></div></article></section>
-    <section id="purchases-view" class="view hidden"><div class="welcome"><div><h2>Purchases & accounts payable</h2><p>Supplier orders, invoice receiving, stock posting and outstanding balances.</p></div><div><button class="secondary" id="add-supplier" type="button">＋ Supplier</button> <button class="secondary" id="create-po" type="button">＋ Purchase order</button></div></div><article class="panel"><div class="panel-heading"><div><h3>Purchase orders</h3><p>Open orders and receiving workflow</p></div></div><div class="table-wrap"><table><thead><tr><th>PO</th><th>Supplier</th><th>Status</th><th>Total</th><th>Created</th><th>Actions</th></tr></thead><tbody id="purchase-orders-table"></tbody></table></div></article><article class="panel"><div class="panel-heading"><div><h3>Supplier balances</h3><p>Outstanding payables</p></div></div><div class="table-wrap"><table><thead><tr><th>Supplier</th><th>Invoice</th><th>Due</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead><tbody id="supplier-balances-table"></tbody></table></div></article></section>
-    <section id="accounting-view" class="view hidden"><div class="welcome"><div><h2>Accounts</h2><p>Money, vouchers and management records.</p></div></div></section>
-    <section id="reports-view" class="view hidden"><div class="welcome"><div><h2>Reports</h2><p>Management view of sales, stock, purchasing and exceptions.</p></div></div></section>
-  </main>
-  <script src="supabase-config.js?v=20261025-1"></script>
-  <script src="app.js"></script>
-  <script src="ux-refresh.js"></script>
-  <script src="product-intelligence.js"></script>
+  <div id="app" aria-live="polite">
+    <div class="boot"><span class="spinner"></span> Loading…</div>
+  </div>
+  <noscript>This app needs JavaScript enabled.</noscript>
+  <script type="module" src="/src/main.js"></script>
 </body>
 </html>

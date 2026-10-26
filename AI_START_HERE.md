@@ -1,152 +1,37 @@
-# Dream City Grocery — AI START HERE
+# AI / developer hand-over — start here
 
-> **Purpose:** This file is the portable handoff for any AI assistant, developer, or future ChatGPT session that needs to continue Dream City Grocery without relying on previous conversation history.
+Last updated: **26 October 2026** (v2 white-label rebuild).
 
-## 1. Project identity
+## What this is
+A white-label grocery POS (sales, stock, purchasing, customers' credit, double-entry accounts) on Supabase. The first deployment is **Dream City Grocery** (Nebbi, Uganda); any other shop can run its own copy with its own Supabase project (see `SETUP.md`).
 
-- Project: **Dream City Grocery**
-- Brand: **Dream City — Empowering Communities**
-- GitHub: `odoema/dream-city-grocery`
-- Default branch: `main`
-- Live GitHub Pages app: `https://odoema.github.io/dream-city-grocery/`
-- Primary currency: UGX
-- Owner notification email currently documented by the project: `odoema@gmail.com`
+- GitHub: `odoema/dream-city-grocery` (branch `main` deploys to GitHub Pages via `.github/workflows/pages.yml`).
+- Dream City database: Supabase project **`nohdgmylncjtdymfshfy`**. Configured in `public/config.json` (publishable key only).
+- **Never** run Dream City SQL against the SmartAttend project (`gbyvlotgjrtrnogtbemi`). `supabase/legacy/` holds the old temporary `dreamcity`-schema files — do not run them.
 
-## 2. Non-negotiable safety rule
+## Architecture (v2)
+- Vite + vanilla JS ES modules in `src/`; a single Supabase client (`src/lib/supabase.js`); hash router with role checks (`src/router.js`); views in `src/views/`.
+- All money/stock writes go through PostgreSQL functions (RPCs). Key ones: `complete_sale`, `refund_sale`, `record_shop_purchase`, `receive_supplier_invoice`, `pay_supplier_invoice`, `receive_customer_payment`, `record_expense`, `post_opening_stock`, stocktake functions, `get_sales_summary`, `get_financial_statements`, Loyverse imports (`import_loyverse_items`, `import_customers`, `import_legacy_sales`).
+- White-label settings: `store_settings` table (one row) + `get_public_store_profile()` for the login page; first user claims ownership via `claim_first_owner()`.
 
-**Dream City Grocery must remain completely separate from SmartAttend.**
+## What changed in v2 (why)
+The v1 site could not sign anyone in: `supabase-config.js` used `document.write` with an escaped closing tag that swallowed `app.js`, the anon key was truncated, and `app.js` referenced ~20 element IDs that no longer existed (it would crash on load). Nine overlay scripts patched each other (prompt() hijacking, DOM scraping, four Supabase clients). v2 replaces all of it.
 
-Historical development temporarily used a `dreamcity` schema inside the SmartAttend Supabase project. That is legacy only. Do not run Dream City migrations, resets, destructive SQL, or broad SQL against SmartAttend.
+Database fixes in `20261026000100_white_label_platform.sql`: stock column locked against direct writes; 100%-discount sales balanced; credit limits now net of customer payments; audit spam from every sale removed; any cashier could queue notification e-mails (revoked); sold-by-weight/untracked items; refunds, expenses, customer payments; server-side reports. Earlier migration files fixed: stocktake `$`-quoting (the file could never have run), broken duplicate product-intelligence file removed, duplicate version renumbered.
 
-The intended dedicated production Supabase project is:
+## Testing
+- `npm test` — Loyverse parser unit tests.
+- `npm run test:db` — applies every migration to an in-memory Postgres (PGlite) with Supabase stand-ins and runs the business flows as real API roles: sales, replay, refunds, credit limits, purchases, stocktake, imports, reports, staff. Every journal must balance and the balance sheet must balance. Runs in CI.
+- `npm run test:smoke` — builds, then drives every screen in Chromium against a mocked API (needs Playwright installed globally).
 
-- Project ref: `nohdgmylncjtdymfshfy`
-- URL: `https://nohdgmylncjtdymfshfy.supabase.co`
+## Deploying to Dream City's live database
+1. Run `scripts/check-migrations.sql` in the SQL editor of `nohdgmylncjtdymfshfy` (read-only).
+2. Apply only the files showing `false`, in order. `20261026000100_white_label_platform.sql` is required by v2.
+3. Merge to `main`; Pages redeploys. Sign in as the owner and check Settings.
 
-The current browser configuration points to that dedicated project. Verify the deployed app before real transactions.
-
-## 3. Source-of-truth hierarchy
-
-1. **GitHub** — application code, migrations and durable project documentation.
-2. **Dedicated Supabase project** `nohdgmylncjtdymfshfy` — live transactional/database authority.
-3. **Google Apps Script / Drive** — planned document, receipt and reporting automation layer.
-4. **AI conversation** — working session only; never treat chat history as the only copy of a decision or requirement.
-
-## 4. Current repository structure
-
-Important files/directories currently present:
-
-- `README.md` — technical architecture and safety constraints.
-- `USER_GUIDE.md` — operational instructions and warnings.
-- `SUPABASE_SETUP.md` — dedicated Supabase setup and smoke-test instructions.
-- `supabase-config.js` — browser-safe Supabase URL/public key configuration.
-- `app.js` — frontend application logic.
-- `index.html` — application shell.
-- `styles.css` — application styling.
-- `supabase/migrations/` — versioned database changes.
-- `google-apps-script/` — Google Workspace automation.
-- `docs/` — project documentation.
-- `public/` — public web assets.
-
-There is currently no `AGENTS.md`; this file is the primary portable AI handoff.
-
-## 5. Current database migration baseline
-
-The repository contains the dedicated initial schema migration:
-
-`supabase/migrations/20261024000100_initial_schema.sql`
-
-and the purchasing/AP migration documented in `SUPABASE_SETUP.md`:
-
-`supabase/migrations/20261024000200_purchasing_ap.sql`
-
-The initial schema establishes roles, payment methods, accounting types, inventory movement types, profiles and the core business database structure. Review the actual migration files before changing production.
-
-## 6. Current application state
-
-Treat the application as **development/MVP until independently verified**. Existing documentation says the interface has had demo/sample figures and that some long-term modules are not necessarily complete.
-
-The current documented MVP includes, or is intended to include:
-
-- staff authentication/profile checks
-- live product reads
-- manager product creation
-- atomic checkout RPC
-- recent sales
-- printable receipts
-- purchasing/AP workflows in the newer migration/UI
-
-Do not infer production readiness from the presence of a UI control. Verify the database function, authorization, resulting records and reconciliation totals.
-
-## 7. Accounting principles
-
-- Database is the financial source of truth.
-- Financial operations should be atomic.
-- Sales, inventory, COGS, accounting and audit records must remain consistent.
-- Do not manufacture journal entries from the browser to make reports balance.
-- Tax is currently disabled/rejected unless the business policy is explicitly established.
-- UGX amounts should use exact numeric/decimal storage, not floating-point arithmetic.
-
-## 8. Safe development workflow
-
-Use this order for every significant change:
-
-**Audit → Reconcile → Implement → Test → Review → Approve → Deploy → Verify**
-
-Before changing anything:
-
-1. Read `README.md`.
-2. Read `SUPABASE_SETUP.md` for database work.
-3. Read the relevant migration and frontend code.
-4. Identify the exact target project/ref.
-5. Prefer read-only inspection first.
-6. Never expose or request passwords, service-role keys, or secrets in chat.
-7. Never use SmartAttend as a testing target for Dream City.
-8. Test financial workflows with isolated test data.
-9. Commit durable decisions/documentation to GitHub.
-
-## 9. Production verification checklist
-
-Before declaring the system ready for live shop use, verify:
-
-- [ ] Live app points to `nohdgmylncjtdymfshfy`.
-- [ ] Dedicated database migrations are applied exactly once and reviewed.
-- [ ] Auth users and active staff profiles exist.
-- [ ] RLS/server-side authorization works for every role.
-- [ ] Product reads and creation work according to role.
-- [ ] Cash sale succeeds and creates expected sale, inventory, COGS, journal and audit records.
-- [ ] Credit sale requires an active customer and respects credit policy.
-- [ ] Insufficient stock fails atomically with no partial writes.
-- [ ] Invalid discount/tax/duplicate-line conditions fail safely.
-- [ ] Purchasing and supplier-payment workflows reconcile correctly.
-- [ ] Stocktake cannot post incomplete counts.
-- [ ] Reports are based on verified data rather than sample/demo figures.
-- [ ] Receipt/Google automation is verified if enabled.
-- [ ] Backup and recovery procedures are documented and tested.
-- [ ] SmartAttend has not been modified as part of Dream City work.
-
-## 10. If the previous AI/session is unavailable
-
-Do **not** ask the user to reconstruct the whole project from memory.
-
-Start here, inspect GitHub, then inspect the dedicated Supabase project if the required connector/access is available. Report:
-
-1. current branch and latest commit;
-2. repository structure;
-3. current migration baseline;
-4. live Supabase target;
-5. what is verified versus merely documented;
-6. open risks/blockers;
-7. the smallest safe next step.
-
-If an AI system cannot access Supabase, it can still continue code/documentation work from this repository and must clearly mark database state as **unverified**.
-
-## 11. Recovery principle
-
-This project is intentionally designed so that loss of access to one AI does not mean loss of the project. GitHub contains the durable implementation and this handoff. Supabase contains the live data. Google Drive/Apps Script can contain generated business documents. The AI is replaceable; the project record is not.
-
-## 12. Immediate next task
-
-**Audit the deployed application against the dedicated Supabase project, then perform an isolated end-to-end verification of authentication, product loading, checkout, purchasing, stocktake and accounting. Do not use real shop transactions as test data.**
-
-Last handoff baseline: **24 October 2026**.
+## Known limitations / next steps
+- Stock valued at latest purchase cost (not weighted average).
+- No offline sales queue (sales require a connection; cart survives in the tab).
+- Tax disabled until a tax policy is chosen.
+- Cash-advance accountability (issue → spend → return) from `docs/TARGET-ARCHITECTURE.md` not yet built.
+- Partial refunds not supported (whole-sale refunds only).

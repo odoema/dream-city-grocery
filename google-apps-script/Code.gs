@@ -1,5 +1,5 @@
 /**
- * Dream City Grocery Google Workspace automation.
+ * Grocery POS Google Workspace automation (white-label: the shop name comes from store_settings).
  *
  * Script Properties required for management alerts:
  *   SUPABASE_URL = https://nohdgmylncjtdymfshfy.supabase.co
@@ -31,9 +31,9 @@ function doPost(e) {
     if (!sale || !sale.receipt_number || !Array.isArray(sale.items)) return json_({ ok:false, error:'Invalid sale payload' });
     const emailTo = props.getProperty('RECEIPT_EMAIL_TO') || 'odoema@gmail.com';
     const pdf = buildReceiptPdf_(sale);
-    const subject = 'Dream City Grocery receipt ' + sale.receipt_number + ' — ' + money_(sale.total_amount);
-    const textBody = ['A transaction was recorded at Dream City Grocery.','Receipt: '+sale.receipt_number,'Date: '+(sale.created_at || new Date().toISOString()),'Cashier: '+(sale.cashier_name || 'Not specified'),'Payment: '+(sale.payment_method || 'Not specified'),'Total: '+money_(sale.total_amount),'','The PDF receipt is attached.'].join('\n');
-    GmailApp.sendEmail(emailTo, subject, textBody, {attachments:[pdf], name:'Dream City Grocery'});
+    const subject = shopName_() + ' receipt ' + sale.receipt_number + ' — ' + money_(sale.total_amount);
+    const textBody = ['A transaction was recorded at ' + shopName_() + '.','Receipt: '+sale.receipt_number,'Date: '+(sale.created_at || new Date().toISOString()),'Cashier: '+(sale.cashier_name || 'Not specified'),'Payment: '+(sale.payment_method || 'Not specified'),'Total: '+money_(sale.total_amount),'','The PDF receipt is attached.'].join('\n');
+    GmailApp.sendEmail(emailTo, subject, textBody, {attachments:[pdf], name:shopName_()});
     const folderId = props.getProperty('DRIVE_RECEIPTS_FOLDER_ID');
     if (folderId) DriveApp.getFolderById(folderId).createFile(pdf.copyBlob()).setName(sale.receipt_number+'.pdf');
     return json_({ok:true,receipt_number:sale.receipt_number,emailed_to:emailTo});
@@ -65,9 +65,9 @@ function processManagementNotificationQueue() {
     try {
       GmailApp.sendEmail(
         recipients.join(','),
-        'Dream City Grocery — ' + row.title,
+        shopName_() + ' — ' + row.title,
         row.body + '\n\nEvent: ' + row.event_type + '\nRecorded: ' + row.created_at,
-        {name:'Dream City Grocery Management Alerts'}
+        {name:shopName_() + ' Management Alerts'}
       );
       supabaseRequest_('/rest/v1/management_notifications?id=eq.' + encodeURIComponent(row.id), 'PATCH', {
         sent_at: new Date().toISOString(),
@@ -104,9 +104,9 @@ function sendDailySalesSummary() {
     byPayment[method] = (byPayment[method] || 0) + Number(row.total || 0);
   });
   const paymentLines = Object.keys(byPayment).sort().map(function(key){ return '  ' + key + ': ' + money_(byPayment[key]); });
-  const subject = 'Dream City Grocery — Daily Sales Summary ' + localDate;
+  const subject = shopName_() + ' — Daily Sales Summary ' + localDate;
   const body = [
-    'Dream City Grocery daily management summary',
+    shopName_() + ' daily management summary',
     '',
     'Date: ' + localDate,
     'Completed transactions: ' + completed.length,
@@ -117,7 +117,7 @@ function sendDailySalesSummary() {
     '',
     'This summary is generated from completed sales in the dedicated Supabase database.'
   ].join('\n');
-  GmailApp.sendEmail(getAlertEmails_().join(','), subject, body, {name:'Dream City Grocery Management Alerts'});
+  GmailApp.sendEmail(getAlertEmails_().join(','), subject, body, {name:shopName_() + ' Management Alerts'});
 }
 
 function getAlertEmails_() {
@@ -156,13 +156,28 @@ function supabaseRequest_(path, method, body) {
 function buildReceiptPdf_(sale) {
   const doc=DocumentApp.create('Receipt '+sale.receipt_number), body=doc.getBody();
   body.appendParagraph('DREAM CITY GROCERY').setHeading(DocumentApp.ParagraphHeading.HEADING1);
-  body.appendParagraph('Dream City — Empowering Communities'); body.appendParagraph('SALES RECEIPT').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph(shopName_()); body.appendParagraph('SALES RECEIPT').setHeading(DocumentApp.ParagraphHeading.HEADING2);
   body.appendParagraph('Receipt: '+sale.receipt_number); body.appendParagraph('Date: '+(sale.created_at || new Date().toISOString())); body.appendParagraph('Cashier: '+(sale.cashier_name || '—')); body.appendParagraph('Payment: '+(sale.payment_method || '—')); body.appendHorizontalRule();
   const table=[['Item','Qty','Unit price','Total']]; sale.items.forEach(function(item){table.push([String(item.product_name || item.name || 'Item'),String(item.quantity),money_(item.unit_price),money_(item.line_total)]);}); body.appendTable(table);
   body.appendParagraph('Subtotal: '+money_(sale.subtotal)); if(Number(sale.discount_amount||0)) body.appendParagraph('Discount: '+money_(sale.discount_amount)); if(Number(sale.tax_amount||0)) body.appendParagraph('Tax: '+money_(sale.tax_amount));
-  body.appendParagraph('TOTAL: '+money_(sale.total_amount)).setHeading(DocumentApp.ParagraphHeading.HEADING2); body.appendParagraph('Thank you for shopping with Dream City Grocery!'); doc.saveAndClose();
+  body.appendParagraph('TOTAL: '+money_(sale.total_amount)).setHeading(DocumentApp.ParagraphHeading.HEADING2); body.appendParagraph('Thank you for shopping with ' + shopName_() + '!'); doc.saveAndClose();
   const pdf=DriveApp.getFileById(doc.getId()).getAs(MimeType.PDF).setName(sale.receipt_number+'.pdf'); DriveApp.getFileById(doc.getId()).setTrashed(true); return pdf;
 }
 function money_(amount){return 'UGX '+Number(amount||0).toLocaleString('en-UG',{maximumFractionDigits:2});}
 function safeEqual_(a,b){if(typeof a!=='string'||typeof b!=='string'||a.length!==b.length)return false;let result=0;for(let i=0;i<a.length;i++)result|=a.charCodeAt(i)^b.charCodeAt(i);return result===0;}
 function json_(obj){return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);}
+
+
+/** Shop name from the database settings (cached for 6 hours). */
+function shopName_() {
+  const cache = CacheService.getScriptCache();
+  const hit = cache.get('shop_name');
+  if (hit) return hit;
+  let name = PropertiesService.getScriptProperties().getProperty('SHOP_NAME') || 'Grocery';
+  try {
+    const rows = supabaseRequest_('/rest/v1/store_settings?select=business_name&limit=1', 'GET');
+    if (rows && rows[0] && rows[0].business_name) name = rows[0].business_name;
+  } catch (e) { /* fall back to SHOP_NAME */ }
+  cache.put('shop_name', name, 21600);
+  return name;
+}

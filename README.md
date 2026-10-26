@@ -1,528 +1,81 @@
-# Dream City Grocery
+# Grocery POS — white-label point of sale, stock and accounts
 
-> **Dream City — Empowering Communities**
->
-> Grocery Point of Sale, inventory, accounting, reporting and remote-management platform.
+A complete, mobile-friendly system for a grocery or small shop: **sell, buy, count stock, track customers' credit, and see real profit** — with proper double-entry accounting underneath. It started as Dream City Grocery's system and is now built so **any shop can run its own copy** with its own name, logo, currency and database.
 
-## User documentation
+Live (Dream City): https://odoema.github.io/dream-city-grocery/
 
-- **[Complete User Guide](USER_GUIDE.md)** — staff sign-in, POS sales, inventory, step-by-step stock taking and reconciliation, purchases and supplier payments, accounting, reports, roles, troubleshooting and daily checklists.
-- This README is the technical architecture and developer handoff. The user guide describes how staff should operate the interface and distinguishes live workflows from prototype/sample content.
+| For staff | For owners |
+|---|---|
+| Fast till with barcode scanning, weighed items, cash change | Today's sales, profit and cash at a glance |
+| Customer credit and repayments | Profit & loss, balance sheet, trial balance |
+| Record purchases in one form | Smart shopping list from real sales |
+| Guided stock counts | Refunds, discounts and price changes are controlled and audited |
+| Works on phone, tablet, PC; installable | Import everything from **Loyverse** |
 
-## 1. Project purpose
+## Technology
 
-Dream City Grocery is being built as a complete grocery-shop management system rather than a simple cash register. The goal is to give the owner a reliable view of every sale, stock movement, expense and financial result while giving cashiers a simple POS experience.
+- **Frontend:** Vite + vanilla JavaScript (ES modules), one Supabase client, no framework. Built by GitHub Actions and served from GitHub Pages (any static host works). Installable PWA.
+- **Backend:** Supabase (PostgreSQL, Auth, Row-Level Security, Storage). Every money or stock change is a single database transaction in a PostgreSQL function — the browser never writes sales, stock or journals directly.
+- **Optional:** Google Apps Script for e-mailed alerts/receipts (`google-apps-script/`), Edge Function for staff invitations (`supabase/functions/invite-staff`).
 
-The system is designed for UGX transactions and is intended to work from a phone, tablet or computer, with an installable mobile/PWA experience planned.
-
-## 2. Important separation from SmartAttend
-
-**Dream City Grocery is a separate business system and has nothing to do with SmartAttend.**
-
-During development, a temporary PostgreSQL schema named `dreamcity` was created inside the existing SmartAttend Supabase project. This was a deliberate temporary arrangement so development could continue while a dedicated Supabase project was being prepared.
-
-- SmartAttend's existing tables and application must remain untouched.
-- All Dream City database objects created during this temporary phase belong under the `dreamcity` schema.
-- The temporary schema is **not the intended permanent production location**.
-- The dedicated Dream City Supabase project created by the user has project reference `nohdgmylncjtdymfshfy`.
-- When access to that dedicated project is available, the `dreamcity` schema and its data should be migrated there.
-- Do not migrate, modify, rename or delete SmartAttend data as part of the Dream City migration.
-
-## 3. GitHub repository
-
-Repository: `odoema/dream-city-grocery`
-
-Default branch: `main`
-
-This repository is the source of truth for the Dream City Grocery application code, database migrations/schema definitions, Google Apps Script automation and project documentation.
-
-## 4. Target architecture
-
-```text
-                    DREAM CITY GROCERY
-                            |
-             +--------------+--------------+
-             |                             |
-        Web / PWA POS                 Owner Dashboard
-        Phone / Tablet / PC           Remote Management
-             |                             |
-             +--------------+--------------+
-                            |
-                         Supabase
-                      PostgreSQL/Auth
-                            |
-       +--------------------+--------------------+
-       |                    |                    |
-    Inventory           Accounting             Sales
-       |                    |                    |
-       +--------------------+--------------------+
-                            |
-                   Google Apps Script
-                            |
-             +--------------+--------------+
-             |              |              |
-            PDF           Gmail          Drive
-          receipts        alerts         archive
+```
+src/
+  main.js            boot, sign-in, app shell
+  router.js          #/home, #/sell, … with role-based access
+  lib/               supabase client, formatting, UI kit, receipts, periods
+  views/             home, sell, products, customers, buy, count, reports,
+                     accounts, import (Loyverse), staff, settings, setup
+  import/loyverse.js Loyverse CSV parsers (unit-tested)
+supabase/migrations/ database, in order
+supabase/functions/  invite-staff edge function
+tests/               parser unit tests + browser smoke test
+public/config.json   which Supabase project this copy uses
 ```
 
-### Backend separation and current frontend configuration
+## Run it
 
-The intended and configured frontend target is the dedicated Dream City Grocery Supabase project `nohdgmylncjtdymfshfy`. The current browser app configuration must be checked against the deployed `supabase-config.js` and live Supabase project before real transactions are attempted.
+```bash
+npm install
+npm run dev        # http://localhost:5173
+npm test           # Loyverse parser tests
+npm run build      # production build in dist/
+```
 
-Historical development used a `dreamcity` schema inside the SmartAttend Supabase project `gbyvlotgjrtrnogtbemi`. This is a legacy temporary arrangement, **not permission to continue making changes there**. SmartAttend's paying customers, `public` schema, authentication and production settings must remain untouched. Do not run migrations or destructive SQL against that shared project.
+`public/config.json` points the app at a Supabase project:
 
-The repository's UI currently contains a demo-mode indicator and sample dashboard figures. Treat those figures as illustrative, and verify the live data connection before using the application for actual shop transactions.
+```json
+{ "supabaseUrl": "https://YOUR-PROJECT.supabase.co", "supabaseKey": "sb_publishable_..." }
+```
 
-## 5. Core modules
+Only the **publishable/anon** key goes there. The app refuses to start with a secret key.
 
-### POS
+## Set up a new shop
 
-- Product search
-- SKU/barcode support
-- Cart
-- Quantity and price handling
-- Discounts
-- Tax field
-- Cash, mobile money, card, bank and credit payment methods
-- Unique receipt numbers
-- Completed/voided/refunded sale states
-- Cashier identification
+See **[SETUP.md](SETUP.md)** — about 15 minutes: create a Supabase project, run the migrations, deploy, sign in, and the first person becomes the owner. Then **[LOYVERSE_MIGRATION.md](LOYVERSE_MIGRATION.md)** to bring over products, stock, customers and sales history.
 
-### Product catalogue
+## Accounting model (summary)
 
-Products are designed to store:
-
-- SKU
-- Barcode
-- Product name
-- Category
-- Supplier
-- Buying price
-- Selling price
-- Quantity on hand
-- Reorder level
-- Unit of measure
-- Expiry date
-- Active/inactive state
-
-### Inventory
-
-Inventory is transaction-based rather than relying only on a current stock number.
-
-Supported movement concepts include:
-
-- Opening stock
-- Purchases
-- Sales
-- Sales returns
-- Purchase returns
-- Adjustments
-
-Every sale reduces stock and records an inventory movement. Low-stock reporting is based on quantity versus reorder level.
-
-### Suppliers and purchasing
-
-The system is intended to support suppliers, purchasing, receiving stock and supplier payables. Purchase workflows will eventually create both inventory movements and accounting entries.
-
-### Customers
-
-Customers can have contact information, credit limits and sales history. Credit sales are represented through Accounts Receivable rather than being treated as immediate cash receipts.
-
-## 6. Double-entry accounting
-
-Accounting is a first-class component of the system.
-
-The initial chart of accounts includes:
-
-| Code | Account | Type |
+| Event | Debit | Credit |
 |---|---|---|
-| 1000 | Cash | Asset |
-| 1010 | Mobile Money | Asset |
-| 1020 | Bank | Asset |
-| 1100 | Accounts Receivable | Asset |
-| 1200 | Inventory | Asset |
-| 2000 | Accounts Payable | Liability |
-| 3000 | Owner Capital | Equity |
-| 3100 | Retained Earnings | Equity |
-| 4000 | Sales Revenue | Revenue |
-| 4900 | Sales Returns & Discounts | Contra/adjustment account |
-| 5000 | Cost of Goods Sold | Expense |
-| 6000 | Operating Expenses | Expense |
-
-A completed cash/mobile-money/card sale is intended to produce both revenue and COGS entries.
-
-Conceptually:
-
-```text
-Dr Cash / Mobile Money / Bank       TOTAL
-    Cr Sales Revenue                         NET SALES
-```
-
-and:
-
-```text
-Dr Cost of Goods Sold               COGS
-    Cr Inventory                            COGS
-```
-
-The exact payment-account mapping and treatment of discounts/tax must remain consistent with the accounting policy implemented in the production database.
-
-## 7. Atomic sale engine
-
-The temporary backend contains the `dreamcity.complete_sale(...)` PostgreSQL function.
-
-The intended checkout sequence is:
-
-```text
-Complete Sale
-     |
-     +--> Authenticate cashier
-     |
-     +--> Validate products
-     |
-     +--> Lock product rows
-     |
-     +--> Check available stock
-     |
-     +--> Calculate subtotal / discount / tax / total
-     |
-     +--> Create sale + sale items
-     |
-     +--> Deduct inventory
-     |
-     +--> Record inventory movements
-     |
-     +--> Create accounting journal
-     |
-     +--> Create journal lines
-     |
-     +--> Write audit event
-     |
-     +--> Commit as one database transaction
-     |
-     +--> Return receipt number and totals
-```
-
-This is important: the POS should not independently update sales, stock and accounting in unrelated client-side requests. The database transaction should remain the source of truth.
-
-## 8. Roles and permissions
-
-The planned roles are:
-
-### Owner
-
-Full business visibility and administration.
-
-### Manager
-
-Operational management, inventory, purchasing, reports and approved financial workflows.
-
-### Cashier
-
-POS sales and permitted cashier operations. Cashiers should not be able to silently alter completed transactions, accounting records or system configuration.
-
-### Accountant
-
-Accounting, expenses, journals and financial reporting without unnecessary POS administration privileges.
-
-Row-Level Security and server-side authorization should be retained in the production implementation.
-
-## 9. Audit trail
-
-Important actions should be auditable, including:
-
-- Sales
-- Voids/refunds
-- Stock adjustments
-- Price changes
-- Expense entries
-- User/account changes
-- Accounting adjustments
-
-The audit record should identify the user, action, entity, timestamp and relevant details.
-
-Completed transactions should normally be corrected through controlled reversal/refund workflows rather than being physically deleted.
-
-## 10. Receipts and Google automation
-
-Google Apps Script is intended to provide the Google Workspace automation layer, not the core transactional database.
-
-Planned workflow:
-
-```text
-Completed Sale
-      |
-      v
-Google Apps Script
-      |
-      +--> Generate PDF receipt
-      +--> Email receipt/transaction alert
-      +--> Archive PDF in Google Drive
-      +--> Support scheduled reports
-```
-
-The primary notification/receipt email currently specified for the project is:
-
-`odoema@gmail.com`
-
-The final implementation should use secure server-side credentials and should never expose privileged service credentials in the browser.
-
-## 11. Alerts
-
-The system is intended to support:
-
-- Every-transaction notification
-- PDF receipt email
-- Low-stock alerts
-- Large/unusual transaction alerts
-- Refund alerts
-- Expense alerts
-- Daily sales summary
-- Daily profit summary
-- Weekly reports
-- Monthly financial reports
-
-The dashboard should also show live/recent activity so email is not the only monitoring mechanism.
-
-## 12. Dashboard and analytics
-
-The owner dashboard should eventually show:
-
-- Today's sales
-- Transaction count
-- Gross profit
-- Net profit
-- Expenses
-- Cash
-- Mobile money
-- Bank/card collections
-- Inventory value
-- Receivables
-- Payables
-- Low-stock products
-- Best-selling products
-- Slow-moving products
-- Sales by cashier
-- Sales by payment method
-- Sales and profit trends
-
-## 13. Financial reports
-
-The planned reporting suite includes:
-
-- Profit & Loss / Income Statement
-- Balance Sheet
-- Trial Balance
-- General Ledger
-- Cash Book
-- Bank Book
-- Sales report
-- Purchase report
-- Inventory valuation
-- Cost of Goods Sold
-- Profit by product
-- Profit by category
-- Expense report
-- Accounts Payable
-- Accounts Receivable
-- Cash-flow reporting
-
-## 14. Mobile and remote management
-
-The application should be mobile-first and eventually installable as a PWA.
-
-The owner should be able to remotely inspect the business from a phone, including sales, stock, profit, expenses and alerts.
-
-An offline-capable POS is planned as a later phase. Offline sales must be designed carefully so that synchronization cannot create duplicate sales, stock corruption or unbalanced accounting entries.
-
-## 15. Branding
-
-The official supplied Dream City branding is used for the project:
-
-**Dream City — Empowering Communities**
-
-The grocery product name is:
-
-**Dream City Grocery**
-
-The supplied Dream City logo should be used consistently across the POS, dashboard, receipts and reports.
-
-## 16. Currency
-
-Primary currency: **UGX (Ugandan Shillings)**.
-
-Amounts should be stored as exact numeric/decimal values in the database rather than floating-point numbers.
-
-## 17. Security principles
-
-- Never put Supabase service-role/secret keys in frontend code.
-- Use authenticated access and Row-Level Security.
-- Keep privileged operations server-side.
-- Validate prices, quantities and totals server-side.
-- Use database transactions for financial operations.
-- Record audit events for sensitive operations.
-- Do not allow clients to directly manufacture accounting journal entries without authorization.
-- Do not expose SmartAttend data to Dream City users.
-- Keep Dream City migration scripts separate from SmartAttend migrations.
-
-## 18. Migration plan
-
-The temporary `dreamcity` schema is being used to keep development moving while the dedicated Supabase project is inaccessible to the current connected integration.
-
-When the dedicated project is available:
-
-1. Verify the target project `nohdgmylncjtdymfshfy`.
-2. Create the Dream City schema/tables/functions there.
-3. Export only Dream City schema definitions and data from the temporary backend.
-4. Import and validate them in the dedicated project.
-5. Update application environment variables to the dedicated project.
-6. Verify authentication, POS, inventory, accounting and reports.
-7. Verify Google Apps Script integrations.
-8. Run reconciliation tests.
-9. Only after successful validation, retire/remove the temporary Dream City schema from SmartAttend.
-
-**Never delete or alter SmartAttend data as part of this migration.**
-
-## 19. Development phases
-
-### Phase 1 — Foundation
-
-- Database
-- Authentication
-- Roles
-- Products
-- Categories
-- Suppliers
-- Inventory
-
-### Phase 2 — POS
-
-- Cart
-- Product search/barcode scanning
-- Payments
-- Sales
-- Returns/refunds
-- Receipt numbers
-
-### Phase 3 — Automation
-
-- PDF receipts
-- Email alerts
-- Google Drive archive
-- Scheduled reports
-
-### Phase 4 — Accounting
-
-- Chart of accounts
-- Double-entry journals
-- General ledger
-- Trial balance
-- P&L
-- Balance sheet
-- Cash flow
-- Receivables/payables
-
-### Phase 5 — Management
-
-- Owner dashboard
-- Analytics
-- Low-stock alerts
-- Profit analytics
-- Cashier performance
-- Remote management
-
-### Phase 6 — Mobile/offline
-
-- Installable PWA
-- Offline transaction queue
-- Safe synchronization
-- Mobile owner dashboard
-
-## 20. Current status / handoff
-
-This repository contains a working application interface and database-backed workflow code, but it should still be treated as a **development prototype, not a certified production-ready grocery ERP**. The UI visibly labels the workspace as demo mode and the dashboard includes sample figures; verify the actual deployment/configuration and live data before using it for real transactions.
-
-Present in the repository UI/code (verify against the deployed database before relying on it):
-
-- Responsive Dream City-branded staff login, password reset and staff-profile checks
-- Dashboard, POS, inventory, stock-taking, purchases, accounting and reports screens
-- POS product search/cart and checkout RPC call
-- Product and customer creation controls for authorized roles
-- Stocktake draft, count, cancellation and approval/posting workflow using database RPCs
-- Supplier purchase orders, goods receiving/invoice recording and supplier payment workflow using database RPCs
-- Accounting summary/journal-reading code
-- Navigation adapted for desktop and mobile layouts
-- [Staff User Guide](USER_GUIDE.md)
-
-Still required before live shop use:
-
-- Verify the deployed Supabase URL/key points only to the dedicated Dream City project
-- Confirm schema/migrations and role policies match the frontend queries and RPCs
-- Configure and verify the initial owner/staff profiles
-- Test POS, stocktaking, purchasing and accounting against isolated test data
-- Review stocktake and checkout accounting policies and reconciliation outcomes
-- Verify production-grade dashboard/report calculations and distinguish them from sample UI values
-- Implement or verify safe returns/refunds and expense workflows
-- Connect and verify PDF receipt, email and Drive automation if required
-- Add automated tests and production monitoring
-- Confirm backups and recovery procedures
-- Complete end-to-end security/RLS review before live shop use
-
-## 21. Handoff rule
-
-If development is resumed by another developer or AI agent, **read this README first**.
-
-The most important constraints are:
-
-1. This is **Dream City Grocery**, not SmartAttend.
-2. SmartAttend must remain untouched.
-3. The current `dreamcity` schema is temporary.
-4. The permanent Dream City Supabase target is `nohdgmylncjtdymfshfy`.
-5. `odoema/dream-city-grocery` is the GitHub source repository.
-6. UGX is the primary currency.
-7. Double-entry accounting is required.
-8. The database, not the browser, is the financial source of truth.
-9. Every completed sale must maintain consistency between sales, inventory, COGS, accounting and audit records.
-10. Receipts and transaction notifications are intended to be sent to `odoema@gmail.com`.
-
-## 22. Immediate next development task
-
-**Verify the deployed app is connected to the dedicated Dream City Supabase project, then validate each database-backed workflow end to end using isolated test data.** Start with sign-in and active staff profiles, then test product loading, checkout, stocktake draft/count/posting, goods receiving, supplier payment and accounting reconciliation. Do not test by creating fake sales or changing real stock in a live business database.
-
-Do not assume that a visible UI control or an RPC call proves the full workflow is production-ready. Confirm the database function, permissions, resulting records and reconciliation totals.
-
-
-## 23. Production protection: SmartAttend.live
-
-**Critical production safety rule — SmartAttend.live serves paying clients. Protect its availability and data above all else.**
-
-The temporary Dream City development setup shares a Supabase project with SmartAttend. A separate PostgreSQL schema provides logical separation, but it does **not** provide full infrastructure isolation: database-wide permissions, resource usage, project settings, or an incorrectly scoped SQL statement can still affect SmartAttend.
-
-Until Dream City has been migrated and validated in its own Supabase project:
-
-- **Do not run destructive or broad SQL** in the shared project. Never use database resets, `DROP SCHEMA ... CASCADE`, broad table drops/truncates, or unreviewed migrations.
-- **Never modify SmartAttend's `public` schema**, its tables, functions, triggers, policies, extensions, authentication configuration, production settings, or client records as part of Dream City work.
-- Scope Dream City database changes explicitly to `dreamcity`; review every statement before execution. Do not assume that a migration is safe merely because its filename mentions Dream City.
-- Do not run `supabase/migrations/001_initial_schema.sql` against the shared project without reviewing every statement; older migration files may create or alter objects outside `dreamcity`.
-- Read-only inspection is preferred while investigating. A read-only query should inspect the intended schema explicitly and must not expose secrets or personal client data.
-- Do not replace `dreamcity.complete_sale(...)` or apply another database migration until the proposed SQL has been reviewed, its scope is confirmed, and a viable backup/recovery path is verified.
-- Test financial and permission changes using disposable test data in an isolated environment first. Never test by creating fake sales or changing real stock in a live business database.
-- Keep Supabase service-role/secret keys and database passwords out of chat, source code, browser code, commits, logs, and screenshots.
-- Do not claim SmartAttend is unaffected based only on a successful GitHub Actions run; application CI does not verify live database isolation or production health.
-
-### Required target before production
-
-The long-term safe architecture is a **dedicated Supabase project for Dream City Grocery**. Use separate credentials, authentication configuration, backups, and deployment settings. The intended project reference is `nohdgmylncjtdymfshfy`.
-
-Do not move, delete, or retire the temporary `dreamcity` schema from the SmartAttend project until the dedicated target is available, the Dream City data has been migrated and reconciled, and the application has been verified against the dedicated target. Any later cleanup must be a separately reviewed operation with a confirmed recovery path; it must not affect SmartAttend's `public` schema or paying clients.
-
-### Current safety gate
-
-At the time of this note, the installed `dreamcity.complete_sale(...)` function is under review. Its replacement is **not approved or applied by this README update**. Tax accounting treatment remains undecided, so a reviewed checkout change must reject non-zero tax until an appropriate tax liability/accounting policy is established. Card receipts are intended to post to Bank account `1020`, and discounts require owner/manager authorization.
-
-**Default decision when uncertain: stop and inspect; do not execute. SmartAttend.live stability takes precedence over Dream City development speed.**
-
-
-## 24. Staff operations guide
-
-The step-by-step guide for day-to-day use is in **[USER_GUIDE.md](USER_GUIDE.md)**. It covers staff login, dashboard interpretation, POS checkout, product/inventory management, stock taking (including recording supplier deliveries before starting a count), variance review, approval and cancellation, purchases, supplier invoices/payments, accounting, reports, roles and troubleshooting.
+| Sale (cash / mobile money / card / bank / credit) | 1000 / 1010 / 1010 / 1020 / 1100 | 4000 Sales (gross); discount → Dr 4900 |
+| Cost of the sale | 5000 COGS | 1200 Inventory |
+| Refund | exact reversal of the sale's journal; stock returned | |
+| Goods received | 1200 Inventory | 2000 Accounts payable |
+| Supplier paid | 2000 Accounts payable | cash/bank account |
+| Customer pays credit | cash/bank account | 1100 Receivables |
+| Expense | 6000 Operating expenses | cash/bank account |
+| Opening stock (incl. Loyverse import) | 1200 Inventory | 3200 Opening balance equity |
+| Stock count surplus / shortage | 1200 / 6100 | 4100 / 1200 |
+
+Every journal is checked to balance before it is saved. Tax is disabled until a tax policy is configured. Stock is valued at the latest purchase cost.
+
+## Security
+
+- Row-Level Security on every table; writes to money and stock tables only through `SECURITY DEFINER` functions that check the caller's role.
+- Managers can edit catalogue details but **cannot type a stock quantity** — stock changes only via sales, receiving, refunds, opening stock and counts.
+- Roles: owner, manager, accountant, cashier (see Staff screen).
+- Everything sensitive is written to `audit_log`.
+
+## Project history
+
+The original single-shop design notes are kept in `docs/` (`TARGET-ARCHITECTURE.md`, `TRANSACTION-DESIGN.md`). For AI/developer hand-over read **[AI_START_HERE.md](AI_START_HERE.md)**.
