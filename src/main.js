@@ -7,6 +7,9 @@ import { showError, toast } from './lib/ui.js';
 import { renderLogin } from './views/login.js';
 import { renderClaimOwner, renderSetupWizard } from './views/setup.js';
 import { startRouter, stopRouter } from './router.js';
+import { applySavedSizes, makeResizer } from './lib/resize.js';
+
+applySavedSizes();
 
 const app = document.getElementById('app');
 let sessionToken = 0;
@@ -145,7 +148,9 @@ function renderShell() {
     items.filter(n => ['home', 'sell', 'products', 'buy'].includes(n.path)).map(navLink),
     h('button', { class: 'nav-link', onclick: () => document.body.classList.toggle('drawer-open') }, h('span', { class: 'nav-icon' }, '☰'), h('span', null, 'More')));
   const scrim = h('div', { class: 'scrim', onclick: () => document.body.classList.remove('drawer-open') });
-  clear(app, h('div', { class: 'shell' }, drawer, scrim, h('div', { class: 'content' }, topbar, main), bottom));
+  const sideHandle = h('div', { class: 'resizer resizer-x sidebar-resizer', 'aria-label': 'Resize menu' });
+  makeResizer(sideHandle, { name: '--sidebar-w', min: () => 180, max: () => Math.min(420, window.innerWidth * 0.4), compute: e => e.clientX });
+  clear(app, h('div', { class: 'shell' }, drawer, sideHandle, scrim, h('div', { class: 'content' }, topbar, main), bottom));
   startRouter(main, items);
 }
 
