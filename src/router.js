@@ -3,6 +3,7 @@ import { loading } from './lib/ui.js';
 
 const views = {
   home: () => import('./views/home.js'),
+  executive: () => import('./views/executive.js'),
   sell: () => import('./views/sell.js'),
   products: () => import('./views/products.js'),
   customers: () => import('./views/customers.js'),
