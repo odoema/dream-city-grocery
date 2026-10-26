@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Dream City Grocery POS</title>
+  <desc id="desc">Dream City Grocery point of sale logo</desc>
+  <rect width="512" height="512" rx="96" fill="#16376A"/>
+  <rect x="70" y="70" width="372" height="372" rx="72" fill="#FFFFFF"/>
+  <path d="M112 188h288l-18 42H130z" fill="#FB8F11"/>
+  <path d="M136 230h240l-22 174H158z" fill="#16376A"/>
+  <path d="M170 272h172v26H170zm0 48h172v26H170z" fill="#FFFFFF"/>
+  <circle cx="214" cy="386" r="18" fill="#FB8F11"/>
+  <circle cx="310" cy="386" r="18" fill="#FB8F11"/>
+  <path d="M150 188c0-34 26-60 58-60h96c32 0 58 26 58 60" fill="none" stroke="#16376A" stroke-width="24" stroke-linecap="round"/>
+</svg>
