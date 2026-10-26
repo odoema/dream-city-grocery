@@ -18,7 +18,7 @@ const products = [
   { id: 'p1', name: 'Sugar 1kg', sku: 'SUG1', barcode: '6001', selling_price: 5000, buying_price: 4200, quantity_on_hand: 10, reorder_level: 3, unit: 'piece', sold_by_weight: false, track_stock: true, available_for_sale: true, active: true, category_id: 'c1', categories: { name: 'Food' } },
   { id: 'p2', name: 'Rice', sku: 'RICE', barcode: null, selling_price: 4000, buying_price: 3000, quantity_on_hand: 25, reorder_level: 5, unit: 'kg', sold_by_weight: true, track_stock: true, available_for_sale: true, active: true, category_id: 'c1', categories: { name: 'Food' } }
 ];
-const settings = { id: true, business_name: 'Test Grocery', tagline: 'Fresh daily', logo_url: null, primary_color: '#176B45', currency_code: 'UGX', currency_decimals: 0, locale: 'en-UG', timezone: 'Africa/Kampala', receipt_prefix: 'TG', receipt_footer: 'Thanks', receipt_width: '80mm', stock_cover_days: 5, allow_cashier_discounts: false, setup_completed: true, phone: '', email: '', address: '', tax_id: '', receipt_header: '' };
+const settings = { id: true, business_name: 'Test Grocery', tagline: 'Fresh daily', logo_url: 'brand/dream-city-logo.jpeg', primary_color: '#16376A', currency_code: 'UGX', currency_decimals: 0, locale: 'en-UG', timezone: 'Africa/Kampala', receipt_prefix: 'TG', receipt_footer: 'Thanks', receipt_width: '80mm', stock_cover_days: 5, allow_cashier_discounts: false, setup_completed: true, phone: '', email: '', address: '', tax_id: '', receipt_header: '' };
 const calls = [];
 const summary = { scope: 'shop', transactions: 3, gross_sales: 15000, discounts: 0, net_sales: 15000, cost_of_goods: 12000, gross_profit: 3000, refunds: 0, refund_count: 0, average_sale: 5000, by_payment: [{ method: 'cash', count: 3, total: 15000 }], by_day: [{ day: now.slice(0, 10), count: 3, total: 15000, profit: 3000 }], by_hour: [], top_products: [{ product_id: 'p1', name: 'Sugar 1kg', sku: 'SUG1', quantity: 3, revenue: 15000, profit: 2400 }], by_cashier: [{ cashier_id: uid, name: 'Owner', count: 3, total: 15000 }] };
 const fin = { trial_balance: [{ code: '1000', name: 'Cash', type: 'asset', debit: 15000, credit: 0 }, { code: '4000', name: 'Sales Revenue', type: 'revenue', debit: 0, credit: 15000 }], profit_and_loss: { revenue: 15000, discounts_returns: 0, net_revenue: 15000, cost_of_goods: 0, gross_profit: 15000, operating_expenses: 0, net_profit: 15000, lines: [] }, balance_sheet: { assets: [{ code: '1000', name: 'Cash', amount: 15000 }], liabilities: [], equity: [], retained_earnings: 15000, total_assets: 15000, total_liabilities_equity: 15000 } };
@@ -54,7 +54,7 @@ function rest(table, url) {
 
 function rpc(name) {
   switch (name) {
-    case 'get_public_store_profile': return { business_name: 'Test Grocery', tagline: 'Fresh daily', setup_completed: true, has_owner: true, primary_color: '#176B45' };
+    case 'get_public_store_profile': return { business_name: 'Test Grocery', tagline: 'Fresh daily', setup_completed: true, has_owner: true, logo_url: 'brand/dream-city-logo.jpeg', primary_color: '#16376A' };
     case 'get_sales_summary': return summary;
     case 'get_financial_statements': return fin;
     case 'get_legacy_sales_overview': return { lines: 0 };
@@ -109,7 +109,7 @@ await page.route('**/*', async route => {
 const step = async (name, fn) => { try { await fn(); console.log('PASS', name); } catch (e) { console.log('FAIL', name, e.message); errors.push(name + ': ' + e.message); } };
 
 await page.goto('http://app.test/');
-await step('login page shows shop name', async () => { await page.getByText('Test Grocery').first().waitFor({ timeout: 8000 }); });
+await step('login page shows shop name', async () => { await page.locator('img[alt="Test Grocery"]').first().waitFor({ timeout: 8000 }); });
 await page.screenshot({ path: 'tests/screens/login.png' });
 await step('sign in reaches home', async () => {
   await page.fill('#login-email', 'owner@shop.test');
