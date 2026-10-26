@@ -1,4 +1,5 @@
 import { h, clear, table, downloadCsv } from '../lib/dom.js';
+import { printDocument, esc } from '../lib/documents.js';
 import { db, rpc, run } from '../lib/supabase.js';
 import { money, date, dateTime, paymentLabel, todayISO } from '../lib/format.js';
 import { pageHeader, card, toast, showError, stat, loading, formModal, tabs } from '../lib/ui.js';
@@ -62,7 +63,29 @@ export async function render(root) {
         { label: 'Debit', class: 'num', value: r => Number(r.debit) ? money(r.debit) : '' },
         { label: 'Credit', class: 'num', value: r => Number(r.credit) ? money(r.credit) : '' }
       ], tb, { empty: 'Nothing posted yet.' }),
-      h('div', { class: 'row end strong' }, 'Totals: ', money(tbD), ' / ', money(tbC))));
+      h('div', { class: 'row end strong' }, 'Totals: ', money(tbD), ' / ', money(tbC))),
+      h('div', { class: 'row end' }, h('button', { class: 'primary', onclick: () => printStatements(p, pl, bs, tb, tbD, tbC) }, 'Print financial statements')));
+  }
+
+  function printStatements(p, pl, bs, tb, tbD, tbC) {
+    const rows = lines => '<table class="lines"><tbody>' + lines.map(([k, v, strong]) => `<tr${strong ? ' style="font-weight:bold"' : ''}><td>${esc(k)}</td><td class="r${Number(v) < 0 ? ' neg' : ''}">${esc(money(v))}</td></tr>`).join('') + '</tbody></table>';
+    printDocument({
+      title: 'Financial statements', number: p.label, date: 'Period ' + date(p.fromISO) + ' – ' + date(p.toISO),
+      sections: [
+        { heading: 'Profit & loss', html: rows([
+          ['Sales', pl.revenue], ['Less discounts & returns', -pl.discounts_returns], ['Net sales', pl.net_revenue, true],
+          ['Cost of goods sold', -pl.cost_of_goods], ['Gross profit', pl.gross_profit, true],
+          ['Operating expenses (incl. stock losses)', -pl.operating_expenses], ['Net profit', pl.net_profit, true]]) },
+        { heading: 'Balance sheet at ' + date(p.toISO), html: rows([
+          ...bs.assets.map(a => [a.name, a.amount]), ['Total assets', bs.total_assets, true],
+          ...bs.liabilities.map(a => [a.name, a.amount]), ...bs.equity.map(a => [a.name, a.amount]),
+          ['Profit kept in the business (to date)', bs.retained_earnings], ['Total liabilities & equity', bs.total_liabilities_equity, true]]) },
+        { heading: 'Trial balance at ' + date(p.toISO), html: '<table class="lines"><thead><tr><th>Code</th><th>Account</th><th class="r">Debit</th><th class="r">Credit</th></tr></thead><tbody>' +
+          tb.map(r => `<tr><td>${esc(r.code)}</td><td>${esc(r.name)}</td><td class="r">${Number(r.debit) ? esc(money(r.debit)) : ''}</td><td class="r">${Number(r.credit) ? esc(money(r.credit)) : ''}</td></tr>`).join('') +
+          `<tr style="font-weight:bold"><td></td><td>Totals</td><td class="r">${esc(money(tbD))}</td><td class="r">${esc(money(tbC))}</td></tr></tbody></table>` }
+      ],
+      signatures: ['Prepared by (accountant)', 'Approved by (owner)']
+    });
   }
 
   function statement(lines) {
@@ -81,7 +104,8 @@ export async function render(root) {
       { label: 'Category', value: r => r.category },
       { label: 'What for', value: r => r.description },
       { label: 'Paid by', value: r => paymentLabel(r.payment_method) },
-      { label: 'Amount', class: 'num', value: r => money(r.amount) }
+      { label: 'Amount', class: 'num', value: r => money(r.amount) },
+      { label: '', class: 'actions', value: r => h('button', { class: 'link', onclick: () => printVoucher(r) }, 'Print') }
     ], rows, { empty: 'No expenses recorded in this period.' })));
   }
 
@@ -96,6 +120,18 @@ export async function render(root) {
           { label: 'Debit', class: 'num', value: l => Number(l.debit) ? money(l.debit) : '' },
           { label: 'Credit', class: 'num', value: l => Number(l.credit) ? money(l.credit) : '' }
         ], j.journal_lines || []))) : h('p', { class: 'muted' }, 'No entries in this period.')));
+  }
+
+  function printVoucher(r) {
+    printDocument({
+      title: 'Payment voucher', number: r.expense_number, date: date(r.expense_date), stamp: 'Paid',
+      boxes: [{ heading: 'Expense', rows: [['Category', r.category], ['Paid by', paymentLabel(r.payment_method)], ['Reference', r.reference || '']] },
+              { heading: 'Accounting', rows: [['Debit', '6000 Operating expenses'], ['Credit', paymentLabel(r.payment_method) + ' account']] }],
+      columns: [{ label: 'Description' }, { label: 'Amount', right: true }],
+      rows: [[r.description, money(r.amount)]],
+      totals: [['Total paid', money(r.amount), 'grand']],
+      signatures: ['Paid by', 'Received by', 'Approved by']
+    });
   }
 
   function recordExpense() {
