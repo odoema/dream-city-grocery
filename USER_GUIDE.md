@@ -29,12 +29,22 @@ See who owes money. **Receive payment** when a customer pays back credit. Click 
 - **Supplier bills** — what you still owe; record payments.
 - **Orders** — optional formal purchase orders; receive them when goods arrive.
 
+## Inventory (owner, manager, accountant)
+- **Overview** — stock value at cost and selling price, plus what needs attention: out of stock, low, runs out soon, not selling, overstocked, priced below cost, missing price/cost. Tap a tile to list those products. **ABC**: A = the few products that make 80% of sales — never let them run out.
+- **Adjust stock** — damaged, expired, lost, own use, found. Pick a reason, add products, enter how many. Losses go to "Stock loss" in Accounts. Large losses alert the owner.
+- **History** — every stock movement (sales, purchases, refunds, counts, adjustments, returns) with who did it. Export to CSV.
+- **Valuation** — stock value by category; export for the accountant.
+- **Supplier returns** — send goods back; the supplier either credits what you owe or refunds you.
+- **Labels** — print price and barcode labels (A4 sheet or a label printer). Products without a barcode get their SKU, which the till can scan.
+- Owners get an alert when a product drops to its low-stock level or runs out.
+
 ## Count stock
 1. Record any new deliveries first and pause selling.
 2. **Start counting**, type each shelf count and press Enter (it saves immediately). Use 0 for none.
 3. Review differences, then **Finish & post**. Stock and the books are corrected; the difference is shown as surplus or shortage.
 
 ## Reports
+Now includes **Sales by item** and **by category** with profit and margin, exportable to CSV.
 Sales, profit, payment methods, best sellers and staff totals for any period. Reprint receipts. Owners/managers can **refund** a whole sale (with a reason): stock returns and the accounts are reversed.
 
 ## Accounts (owner, manager, accountant)
