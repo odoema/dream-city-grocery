@@ -2,6 +2,7 @@ import { h, clear, table, debounce, downloadCsv } from '../lib/dom.js';
 import { db, rpc, run } from '../lib/supabase.js';
 import { can } from '../lib/state.js';
 import { money, dateTime, paymentLabel } from '../lib/format.js';
+import { printDocument } from '../lib/documents.js';
 import { pageHeader, card, formModal, modal, toast, showError, badge, stat, loading } from '../lib/ui.js';
 
 export async function render(root) {
@@ -78,6 +79,20 @@ export async function render(root) {
       onSubmit: async v => {
         const r = await rpc('receive_customer_payment', { p_customer_id: c.id, p_amount: v.amount, p_payment_method: v.method, p_reference: v.reference || '', p_note: '' });
         toast('Payment recorded. Still owing: ' + money(r.remaining_balance));
+        printDocument({
+          title: 'Customer payment receipt',
+          number: r.receipt_number || ('PAY-' + Date.now().toString(36).toUpperCase()),
+          date: dateTime(new Date().toISOString()),
+          stamp: 'RECEIVED',
+          boxes: [
+            { heading: 'Customer', rows: [['Name', c.name], ['Phone', c.phone || '']] },
+            { heading: 'Payment', rows: [['Method', paymentLabel(v.method)], ['Reference', v.reference || '—']] }
+          ],
+          columns: [{ label: 'Description' }, { label: 'Amount', right: true }],
+          rows: [['Payment received against customer account', money(v.amount)]],
+          totals: [['Amount received', money(v.amount), 'grand'], ['Balance remaining', money(r.remaining_balance)]],
+          notes: 'Please keep this receipt for your records.'
+        });
         await load();
       }
     });
@@ -88,6 +103,7 @@ export async function render(root) {
     modal({ title: c.name, subtitle: [c.phone, c.email].filter(Boolean).join(' · ') || 'Customer statement', wide: true, content: body });
     try {
       const st = await rpc('get_customer_statement', { p_customer_id: c.id });
+      const actions = h('div', { class: 'row end' }, h('button', { class: 'primary', onclick: () => printCustomerStatement(c, st) }, 'Print statement'));
       clear(body,
         h('div', { class: 'stats' }, stat('Owes now', money(st.balance)), stat('Credit limit', money(c.credit_limit))),
         table([
@@ -95,8 +111,26 @@ export async function render(root) {
           { label: 'Entry', value: e => e.kind === 'sale' ? 'Credit sale' + (e.status !== 'completed' ? ' (' + e.status + ')' : '') : 'Payment' },
           { label: 'Reference', value: e => e.reference },
           { label: 'Amount', class: 'num', value: e => h('span', { class: e.kind === 'payment' ? 'ok' : '' }, (e.kind === 'payment' ? '−' : '') + money(e.amount)) }
-        ], st.entries, { empty: 'No credit sales or payments yet.' }));
+        ], st.entries, { empty: 'No credit sales or payments yet.' }),
+        actions);
     } catch (e) { clear(body, h('p', { class: 'muted' }, e.message)); }
+  }
+
+  function printCustomerStatement(c, st) {
+    printDocument({
+      title: 'Customer statement',
+      number: 'STAT-' + String(c.id).slice(0, 8).toUpperCase(),
+      date: dateTime(new Date().toISOString()),
+      stamp: Number(st.balance) > 0 ? 'BALANCE DUE' : 'PAID',
+      boxes: [
+        { heading: 'Customer', rows: [['Name', c.name], ['Phone', c.phone || ''], ['Email', c.email || '']] },
+        { heading: 'Account', rows: [['Credit limit', money(c.credit_limit)], ['Balance due', money(st.balance)]] }
+      ],
+      columns: [{ label: 'Date' }, { label: 'Entry' }, { label: 'Reference' }, { label: 'Amount', right: true }],
+      rows: st.entries.map(e => [dateTime(e.at), e.kind === 'sale' ? 'Credit sale' + (e.status !== 'completed' ? ' (' + e.status + ')' : '') : 'Payment', e.reference || '—', (e.kind === 'payment' ? '−' : '') + money(e.amount)]),
+      totals: [['Balance due', money(st.balance), 'grand']],
+      notes: 'This statement shows credit sales and payments recorded on the customer account.'
+    });
   }
 
   function exportCsv() {
