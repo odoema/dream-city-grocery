@@ -6,10 +6,11 @@ import { receiptHtml } from '../lib/receipt.js';
 import { CURRENCIES, timezones, localeFor } from './setup.js';
 import { applyBranding } from '../main.js';
 import { uploadLogo } from '../lib/branding.js';
+import { isLayoutLocked, setLayoutLocked, resetLayout } from '../lib/resize.js';
 
 export async function render(root) {
   const parts = [pageHeader('Settings', can.settings() ? 'Shop details, receipts and your account.' : 'Your account.')];
-  if (can.settings()) parts.push(shopSettings());
+  if (can.settings()) parts.push(shopSettings(), layoutSettings());
   parts.push(myAccount());
   clear(root, ...parts);
 }
@@ -71,6 +72,21 @@ function shopSettings() {
   });
   drawPreview();
   return h('div', { class: 'grid-2 settings' }, card('Shop settings', form), card('Receipt preview', preview));
+}
+
+// Per-till layout lock (owner only). Saved on this computer, like the sizes themselves.
+function layoutSettings() {
+  const box = h('input', { type: 'checkbox', checked: isLayoutLocked() });
+  const status = h('p', { class: 'muted small' });
+  const say = () => { status.textContent = box.checked
+    ? 'Locked: cashiers cannot move the borders on the Sell page. Untick to adjust, then lock again.'
+    : 'Unlocked: drag the borders on the Sell page (between products and the sale, and under the sale items). Double-click a border to reset it.'; };
+  box.addEventListener('change', () => { setLayoutLocked(box.checked); say(); toast(box.checked ? 'Layout locked on this till.' : 'Layout unlocked on this till.'); });
+  say();
+  return card("This till's layout",
+    h('label', { class: 'check' }, box, h('span', null, h('b', null, 'Lock layout'), h('small', null, 'Applies to this computer only. Each till keeps its own layout.'))),
+    status,
+    h('div', { class: 'row' }, h('button', { class: 'secondary small', type: 'button', onclick: () => { resetLayout(); toast('Layout reset to default on this till.'); } }, 'Reset to default layout')));
 }
 
 function myAccount() {
