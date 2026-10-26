@@ -73,7 +73,7 @@ export function renderLogin(app, { recovery = false, onSignedIn }) {
 
   clear(app, h('div', { class: 'auth' },
     h('section', { class: 'auth-story' },
-      h('div', { class: 'auth-brand' }, p.logo_url ? h('img', { src: p.logo_url, alt: '' }) : h('div', { class: 'brand-mark big' }, name.slice(0, 1)), h('span', null, name)),
+      h('div', { class: 'auth-brand' }, p.logo_url ? h('img', { src: p.logo_url, alt: name }) : h('div', { class: 'brand-mark big' }, name.slice(0, 1)), p.logo_url ? null : h('span', null, name)),
       h('h1', null, 'Run your shop with ', h('em', null, 'confidence.')),
       h('p', null, p.tagline || 'Sales, stock, purchasing and money — in one place.'),
       h('ul', { class: 'auth-points' },
