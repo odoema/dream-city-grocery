@@ -586,3 +586,6 @@ body.present { font-size: 17px; }
   .topbar > a.primary { justify-self: end; }
   .topbar > b { text-align: center; }
 }
+
+/* Dashboard: who the report is prepared for (shown on screen, in presentation and in the donor print-out). */
+.exec-for { margin: .35rem 0 0; font-size: .98rem; opacity: .92; }
