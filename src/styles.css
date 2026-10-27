@@ -165,7 +165,7 @@ tr.clickable { cursor: pointer; } tr.clickable:hover td { background: var(--surf
 .statement dd.neg { color: var(--muted); }
 details.journal { border-bottom: 1px solid var(--line); padding: .5rem 0; }
 details.journal summary { display: flex; gap: 1rem; cursor: pointer; flex-wrap: wrap; }
-.receipt-preview { width: 100%; height: 540px; border: 1px solid var(--line); border-radius: 8px; background: var(--white); }
+.receipt-preview { width: 100%; height: 540px; display: block; border: 1px solid var(--line); border-radius: 8px; background: var(--white); }
 .logo-preview { width: 56px; height: 56px; object-fit: contain; border: 1px solid var(--line); border-radius: 10px; background: var(--white); padding: 3px; }
 
 /* ------------------------------------------------------------------ forms & modals */
