@@ -19,7 +19,7 @@ const views = {
   settings: () => import('./views/settings.js')
 };
 
-const executiveReadOnlyPaths = new Set(['executive', 'products', 'customers', 'inventory', 'reports', 'accounts']);
+const executiveReadOnlyPaths = new Set(['executive', 'products', 'customers', 'inventory', 'reports', 'accounts', 'close', 'settings']);
 
 let mainEl = null;
 let allowed = [];
