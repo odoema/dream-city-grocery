@@ -3,7 +3,7 @@ import { h, clear, table, downloadCsv } from '../lib/dom.js';
 import { db, rpc, run } from '../lib/supabase.js';
 import { can, is } from '../lib/state.js';
 import { money, num, dateTime, paymentLabel, date } from '../lib/format.js';
-import { pageHeader, card, showError, badge, stat, loading } from '../lib/ui.js';
+import { pageHeader, card, showError, badge, stat, loading, modal, toast, withBusy } from '../lib/ui.js';
 import { periodPicker, barChart } from '../lib/period.js';
 import { loadReceipt, printReceipt, downloadReceipt } from '../lib/receipt.js';
 
@@ -18,7 +18,7 @@ export async function render(root) {
     try {
       const [summary, sales, legacy, byItem] = await Promise.all([
         rpc('get_sales_summary', { p_from: p.from, p_to: p.to }),
-        run(db().from('sales').select('id,receipt_number,created_at,payment_method,total,cost_of_goods,status,cashier:profiles!sales_cashier_id_fkey(full_name),customers(name)').gte('created_at', p.from).lt('created_at', p.to).order('created_at', { ascending: false }).limit(1000)),
+        run(db().from('sales').select('id,receipt_number,created_at,payment_method,total,returned_amount,cost_of_goods,status,cashier:profiles!sales_cashier_id_fkey(full_name),customers(name)').gte('created_at', p.from).lt('created_at', p.to).order('created_at', { ascending: false }).limit(1000)),
         can.accounts() ? rpc('get_legacy_sales_overview').catch(() => null) : Promise.resolve(null),
         rpc('get_sales_by_item', { p_from: p.from, p_to: p.to }).catch(() => null)
       ]);
@@ -88,15 +88,16 @@ export async function render(root) {
         { label: 'Cashier', value: r => r.cashier?.full_name || '' },
         { label: 'Customer', value: r => r.customers?.name || 'Walk-in' },
         { label: 'Payment', value: r => paymentLabel(r.payment_method) },
-        { label: 'Total', class: 'num', value: r => money(r.total) },
-        { label: 'Status', value: r => badge(r.status, r.status === 'completed' ? 'ok' : 'bad') },
+        { label: 'Total', class: 'num', value: r => Number(r.returned_amount) > 0 && r.status === 'completed' ? h('span', null, money(r.total - r.returned_amount), h('small', { class: 'block muted' }, money(r.returned_amount) + ' returned')) : money(r.total) },
+        { label: 'Status', value: r => badge(r.status === 'completed' && Number(r.returned_amount) > 0 ? 'part returned' : r.status, r.status === 'completed' ? (Number(r.returned_amount) > 0 ? 'warn' : 'ok') : 'bad') },
         { label: 'Receipt', class: 'actions', value: r => h('div', { class: 'receipt-actions' },
           h('button', { class: 'secondary small', onclick: async () => {
             try { printReceipt(await loadReceipt(db(), r.id)); } catch (e) { showError(e); }
           } }, 'Print'),
           h('button', { class: 'primary small', onclick: async () => {
             try { downloadReceipt(await loadReceipt(db(), r.id)); } catch (e) { showError(e); }
-          } }, 'Download')
+          } }, 'Download'),
+          can.refund() && r.status === 'completed' ? h('button', { class: 'secondary small', onclick: () => returnItems(r, load) }, 'Return') : null
         ) }
       ], sales, { empty: 'No receipts in this period.' }),
       sales.length === 1000 ? h('p', { class: 'muted pad' }, 'Showing the latest 1,000 receipts. Narrow the period to see more.') : null,
@@ -168,4 +169,45 @@ export async function render(root) {
   }
 
   await load();
+}
+
+// Return some or all items of a sale. Money goes back the way it was paid.
+async function returnItems(sale, done) {
+  let items;
+  try {
+    items = await run(db().from('sale_items').select('id,product_name,quantity,returned_quantity,unit_price,line_total').eq('sale_id', sale.id));
+  } catch (e) { return showError(e); }
+  const open = items.filter(i => Number(i.returned_quantity) < Number(i.quantity));
+  const inputs = new Map();
+  const reason = h('input', { type: 'text', required: true, placeholder: 'e.g. expired, wrong item, damaged', 'aria-label': 'Reason' });
+  const rows = open.map(i => {
+    const left = Number(i.quantity) - Number(i.returned_quantity);
+    const inp = h('input', { type: 'number', min: '0', max: String(left), step: 'any', value: '0', class: 'qty-input', 'aria-label': 'Quantity to return of ' + i.product_name });
+    inputs.set(i.id, inp);
+    return h('tr', null, h('td', null, i.product_name), h('td', { class: 'num' }, num(left) + ' × ' + money(i.unit_price)), h('td', { class: 'num' }, inp),
+      h('td', null, h('button', { class: 'link', type: 'button', onclick: () => { inp.value = String(left); } }, 'All')));
+  });
+  const m = modal({
+    title: 'Return items · ' + sale.receipt_number,
+    subtitle: 'Stock goes back on the shelf. The money goes back by ' + paymentLabel(sale.payment_method).toLowerCase() + '.',
+    content: h('div', null,
+      h('table', { class: 'table' }, h('thead', null, h('tr', null, h('th', null, 'Item'), h('th', { class: 'num' }, 'Can return'), h('th', { class: 'num' }, 'Return'), h('th'))), h('tbody', null, rows)),
+      h('div', { class: 'field' }, h('label', null, 'Reason'), reason)),
+    actions: [
+      { label: 'Cancel', onClick: ({ close }) => close() },
+      { label: 'Return all', onClick: () => inputs.forEach((inp, id) => { const i = open.find(x => x.id === id); inp.value = String(Number(i.quantity) - Number(i.returned_quantity)); }) },
+      { label: 'Refund selected', kind: 'primary', onClick: async ({ close }) => {
+        const lines = [...inputs].map(([id, inp]) => ({ sale_item_id: id, quantity: Number(inp.value) || 0 })).filter(l => l.quantity > 0);
+        if (!lines.length) return toast('Enter how many to return.', 'error');
+        if (!reason.value.trim()) { reason.focus(); return toast('Give a reason.', 'error'); }
+        await withBusy(m.el.querySelector('.modal-foot .primary'), async () => {
+          try {
+            const r = await rpc('return_sale_items', { p_sale_id: sale.id, p_lines: lines, p_reason: reason.value.trim() });
+            toast(`${r.return_number}: give back ${money(r.amount)} (${paymentLabel(r.refund_method).toLowerCase()}).`);
+            close(); done();
+          } catch (e) { showError(e); }
+        });
+      } }
+    ]
+  });
 }
