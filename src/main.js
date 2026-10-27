@@ -87,7 +87,7 @@ export async function signOut() {
 export const NAV = [
   { path: 'executive', label: 'Dashboard', icon: 'dashboard', roles: ['owner', 'manager', 'accountant', 'executive_director'] },
   { path: 'sell', label: 'Sell', icon: 'sell', roles: ['owner', 'manager', 'accountant', 'cashier'] },
-  { path: 'close', label: 'Close day', icon: 'close', roles: ['owner', 'manager', 'accountant', 'cashier'] },
+  { path: 'close', label: 'Close day', icon: 'close', roles: ['owner', 'manager', 'accountant', 'cashier', 'executive_director'] },
   { path: 'products', label: 'Products', icon: 'products', roles: ['owner', 'manager', 'accountant', 'executive_director', 'cashier'] },
   { path: 'customers', label: 'Customers', icon: 'customers', roles: ['owner', 'manager', 'accountant', 'executive_director', 'cashier'] },
   { path: 'buy', label: 'Buy', icon: 'buy', roles: ['owner', 'manager', 'accountant', 'cashier'] },
@@ -95,7 +95,7 @@ export const NAV = [
   { path: 'reports', label: 'Reports', icon: 'reports', roles: ['owner', 'manager', 'accountant', 'executive_director', 'cashier'] },
   { path: 'accounts', label: 'Accounts', icon: 'accounts', roles: ['owner', 'manager', 'accountant', 'executive_director'] },
   { path: 'staff', label: 'Staff', icon: 'staff', roles: ['owner', 'manager'] },
-  { path: 'settings', label: 'Settings', icon: 'settings', roles: ['owner', 'manager', 'accountant', 'cashier'] },
+  { path: 'settings', label: 'Settings', icon: 'settings', roles: ['owner', 'manager', 'accountant', 'cashier', 'executive_director'] },
   { path: 'home', label: 'Home', icon: 'home', roles: null, hidden: true },
   { path: 'count', label: 'Count stock', icon: 'count', roles: ['owner', 'manager', 'accountant'], hidden: true },
   { path: 'import', label: 'Import data', icon: 'import', roles: ['owner', 'manager'], hidden: true }
@@ -103,6 +103,8 @@ export const NAV = [
 
 function renderShell() {
   const s = state.settings || {};
+  // View-only staff: buttons that change things are hidden (the server refuses them anyway).
+  document.body.classList.toggle('view-only', state.profile.role === 'executive_director');
   const items = NAV.filter(n => !n.roles || n.roles.includes(state.profile.role));
   const navLink = n => h('a', { href: '#/' + n.path, class: 'nav-link', dataset: { path: n.path } }, h('span', { class: 'nav-icon', 'aria-hidden': 'true', html: icon(n.icon) }), h('span', null, n.label));
   const brand = h('div', { class: 'brand' }, s.logo_url ? h('img', { src: s.logo_url, alt: s.business_name || 'Logo', class: 'brand-logo' }) : h('div', { class: 'brand-mark' }, (s.business_name || 'G').slice(0, 1)), s.logo_url ? null : h('div', null, h('b', null, s.business_name || 'Grocery'), s.tagline ? h('small', null, s.tagline) : null));
