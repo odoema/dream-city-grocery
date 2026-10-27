@@ -112,20 +112,22 @@ export async function signOut() {
 }
 
 // ------------------------------------------------------------------ shell
+// Hidden items still work as links (e.g. Settings → Import, Inventory → Count stock) but stay out of the menu.
 export const NAV = [
-  { path: 'home', label: 'Home', icon: 'home', roles: null },
   { path: 'executive', label: 'Dashboard', icon: 'dashboard', roles: ['owner', 'manager', 'accountant'] },
   { path: 'sell', label: 'Sell', icon: 'sell', roles: null },
+  { path: 'close', label: 'Close day', icon: 'close', roles: null },
   { path: 'products', label: 'Products', icon: 'products', roles: null },
   { path: 'customers', label: 'Customers', icon: 'customers', roles: null },
   { path: 'buy', label: 'Buy', icon: 'buy', roles: null },
   { path: 'inventory', label: 'Inventory', icon: 'inventory', roles: ['owner', 'manager', 'accountant'] },
-  { path: 'count', label: 'Count stock', icon: 'count', roles: ['owner', 'manager', 'accountant'] },
   { path: 'reports', label: 'Reports', icon: 'reports', roles: null },
   { path: 'accounts', label: 'Accounts', icon: 'accounts', roles: ['owner', 'manager', 'accountant'] },
-  { path: 'import', label: 'Import data', icon: 'import', roles: ['owner', 'manager'] },
   { path: 'staff', label: 'Staff', icon: 'staff', roles: ['owner', 'manager'] },
-  { path: 'settings', label: 'Settings', icon: 'settings', roles: null }
+  { path: 'settings', label: 'Settings', icon: 'settings', roles: null },
+  { path: 'home', label: 'Home', icon: 'home', roles: null, hidden: true },
+  { path: 'count', label: 'Count stock', icon: 'count', roles: ['owner', 'manager', 'accountant'], hidden: true },
+  { path: 'import', label: 'Import data', icon: 'import', roles: ['owner', 'manager'], hidden: true }
 ];
 
 function renderShell() {
@@ -139,7 +141,7 @@ function renderShell() {
     h('div', { class: 'avatar' }, initials(state.profile.full_name || state.session.user.email)),
     h('div', null, h('b', null, state.profile.full_name || state.session.user.email), h('small', null, roleLabel(state.profile.role))),
     h('button', { class: 'link', onclick: signOut }, 'Sign out'));
-  const drawer = h('aside', { class: 'sidebar', id: 'sidebar' }, brand, h('nav', { 'aria-label': 'Main' }, items.map(navLink)), user);
+  const drawer = h('aside', { class: 'sidebar', id: 'sidebar' }, brand, h('nav', { 'aria-label': 'Main' }, items.filter(n => !n.hidden).map(navLink)), user);
   const main = h('main', { id: 'view', tabindex: '-1' });
   const topbar = h('header', { class: 'topbar' },
     h('button', { class: 'icon-btn menu-btn', 'aria-label': 'Open menu', onclick: () => document.body.classList.toggle('drawer-open') }, '☰'),
@@ -147,7 +149,7 @@ function renderShell() {
     h('b', null, s.business_name || 'Grocery'),
     h('a', { class: 'primary small', href: '#/sell' }, 'Sell'));
   const bottom = h('nav', { class: 'bottom-nav', 'aria-label': 'Quick' },
-    items.filter(n => ['home', 'sell', 'products', 'buy'].includes(n.path)).map(navLink),
+    items.filter(n => ['executive', 'sell', 'close', 'products'].includes(n.path)).slice(0, 4).map(navLink),
     h('button', { class: 'nav-link', onclick: () => document.body.classList.toggle('drawer-open') }, h('span', { class: 'nav-icon', html: icon('menu') }), h('span', null, 'More')));
   const scrim = h('div', { class: 'scrim', onclick: () => document.body.classList.remove('drawer-open') });
   clear(app, h('div', { class: 'shell' }, drawer, scrim, h('div', { class: 'content' }, topbar, main), bottom));
@@ -199,7 +201,13 @@ setInterval(checkForUpdate, 5 * 60 * 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
 setTimeout(checkForUpdate, 15000);
 
-window.addEventListener('online', () => toast('Back online.'));
-window.addEventListener('offline', () => toast('You are offline. Sales cannot be saved until the connection returns.', 'error'));
+// A clear, persistent banner while the connection is down (sales cannot be saved offline).
+const offlineBar = h('div', { class: 'offline-bar', role: 'alert' }, 'Offline — sales are NOT being saved. Keep the cart; finish the sale when the connection returns.');
+function syncOnline() {
+  if (navigator.onLine) offlineBar.remove(); else document.body.append(offlineBar);
+}
+window.addEventListener('online', () => { syncOnline(); toast('Back online.'); });
+window.addEventListener('offline', syncOnline);
+syncOnline();
 
 boot().catch(showError);
