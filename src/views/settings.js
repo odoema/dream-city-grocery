@@ -49,6 +49,8 @@ function shopSettings() {
       { name: 'address', label: 'Address', value: s.address, full: true },
       { name: 'tax_id', label: 'Tax ID (TIN)', value: s.tax_id },
       { name: 'primary_color', label: 'Brand colour', type: 'color', value: s.primary_color || '#16376A' },
+      { name: 'director_name', label: 'Executive Director', value: s.director_name, placeholder: 'e.g. Hon. Dr. Betty Udongo Pacutho', hint: 'Shown on the Dashboard and greeted in the evening report.' },
+      { name: 'director_title', label: 'Their title', value: s.director_title || 'Executive Director' },
       { type: 'section', label: 'Money & time' },
       { name: 'currency_code', label: 'Currency', type: 'select', value: s.currency_code, options: CURRENCIES },
       { name: 'currency_decimals', label: 'Decimals', type: 'select', value: s.currency_decimals, options: [0, 2].map(v => ({ value: v, label: String(v) })) },
