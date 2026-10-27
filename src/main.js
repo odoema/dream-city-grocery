@@ -172,8 +172,32 @@ function renderConfigError(problems) {
 window.addEventListener('unhandledrejection', e => { if (e.reason) showError(e.reason); });
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update()).catch(() => {}));
 }
+
+// ------------------------------------------------------------------ stay up to date
+// Installed apps can keep an old version open for days. Every few minutes (and when the
+// window comes back into view) check whether a newer version has been published; if so,
+// switch to it at the next screen change, or straight away with the Update button.
+const myBuild = [...document.scripts].map(x => x.src).find(src => /assets\/index-[^/]+\.js$/.test(src)) || '';
+let updateReady = false;
+async function checkForUpdate() {
+  if (!myBuild || updateReady || !navigator.onLine) return;
+  try {
+    const html = await fetch('./?build-check=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.text() : '');
+    const latest = (html.match(/assets\/index-[^"']+\.js/) || [])[0];
+    if (!latest || myBuild.endsWith(latest)) return;
+    updateReady = true;
+    const bar = h('div', { class: 'update-bar', role: 'status' },
+      h('span', null, 'A new version of the app is ready.'),
+      h('button', { class: 'primary small', type: 'button', onclick: () => location.reload() }, 'Update now'));
+    document.body.append(bar);
+    window.addEventListener('hashchange', () => location.reload(), { once: true });
+  } catch { /* offline or blocked: try again later */ }
+}
+setInterval(checkForUpdate, 5 * 60 * 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
+setTimeout(checkForUpdate, 15000);
 
 window.addEventListener('online', () => toast('Back online.'));
 window.addEventListener('offline', () => toast('You are offline. Sales cannot be saved until the connection returns.', 'error'));
