@@ -50,6 +50,7 @@ function rest(table, url) {
     case 'sale_items': return [{ id: 'si1', product_name: 'Sugar 1kg', quantity: 1, returned_quantity: 0, unit_price: 5000, line_total: 5000 }];
     case 'cash_ups': return [{ cash_up_number: 'CU-00001', created_at: now, receipts: 3, expected_cash: 35000, counted_cash: 34000, difference: -1000, notes: '', staff: { full_name: 'Brian Owner' } }];
     case 'sale_returns': return [];
+    case 'loyverse_sync_state': return { id: true, enabled: true, last_finished_at: now, last_error: '', last_result: { items: 120, sales: 4, refunds: 0, stock_aligned: 3, warnings: [] } };
     case 'money_movements': return [{ id: 'm1', movement_number: 'MOV-00001', kind: 'transfer', amount: 30000, from_method: 'cash', to_method: 'bank', note: 'Banking', created_at: now }];
     case 'supplier_returns': return [];
     default: return [];
@@ -245,6 +246,8 @@ await step('accounts: owner money tab', async () => {
 await step('settings: backup button; offline banner', async () => {
   await page.goto('http://app.test/#/settings');
   await page.getByRole('button', { name: 'Download backup' }).waitFor();
+  await page.getByText('Loyverse live sync').waitFor();
+  await page.getByText('new sales 4').waitFor();
   await page.context().setOffline(true);
   await page.locator('.offline-bar').waitFor({ timeout: 3000 });
   await page.context().setOffline(false);
