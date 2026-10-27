@@ -196,8 +196,8 @@ export async function render(root) {
           h('div', { class: 'position' },
             pos('Cash in hand', cash), pos('Mobile money', mobile), pos('Bank', bank), pos('Stock (at cost)', stock),
             pos('Customers owe us', owedToUs), pos('We owe suppliers', -owedBy, true),
-            h('div', { class: 'pos pos-total' }, h('span', null, 'Net worth of the shop'), h('strong', null, money(netWorth))),
-            h('div', { class: 'pos-bar' }, posBar([['Cash & money', cash + mobile + bank, C.navy], ['Stock', stock, C.orange], ['Owed to us', owedToUs, C.bronze]])))),
+            h('div', { class: 'fin-pos fin-pos-total' }, h('span', null, 'Net worth of the shop'), h('strong', null, money(netWorth))),
+            h('div', { class: 'fin-pos-bar' }, posBar([['Cash & money', cash + mobile + bank, C.navy], ['Stock', stock, C.orange], ['Owed to us', owedToUs, C.bronze]])))),
       ),
 
       // Products / categories / hours
@@ -246,7 +246,7 @@ export async function render(root) {
   // ----- small building blocks
   function panel(title, sub, ...content) { return h('div', { class: 'panel2' }, h('div', { class: 'panel2-head' }, h('h2', null, title), sub ? h('p', { class: 'muted small' }, sub) : null), ...content); }
   function empty(t) { return h('p', { class: 'muted pad' }, t); }
-  function pos(label, value, owe) { return h('div', { class: 'pos' }, h('span', null, label), h('strong', { class: owe && value ? 'neg' : '' }, money(value))); }
+  function pos(label, value, owe) { return h('div', { class: 'fin-pos' }, h('span', null, label), h('strong', { class: owe && value ? 'neg' : '' }, money(value))); }
   function posBar(parts) {
     const t = parts.reduce((a, p) => a + Math.max(0, p[1]), 0) || 1;
     return h('div', null, h('div', { class: 'stackbar' }, parts.map(([l, v, c]) => h('span', { title: l + ': ' + money(v), style: { width: (Math.max(0, v) / t * 100) + '%', background: c } }))),
