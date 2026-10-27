@@ -20,6 +20,7 @@ const products = [
 ];
 const settings = { id: true, business_name: 'Test Grocery', tagline: 'Fresh daily', logo_url: 'brand/dream-city-logo.jpeg', primary_color: '#16376A', currency_code: 'UGX', currency_decimals: 0, locale: 'en-UG', timezone: 'Africa/Kampala', receipt_prefix: 'TG', receipt_footer: 'Thanks', receipt_width: process.env.RECEIPT_WIDTH || '80mm', stock_cover_days: 5, allow_cashier_discounts: false, setup_completed: true, phone: '', email: '', address: '', tax_id: '', receipt_header: '', director_name: 'Hon. Dr. Betty Udongo Pacutho', director_title: 'Executive Director' };
 const calls = [];
+let mockRole = 'owner';
 const summary = { scope: 'shop', transactions: 3, gross_sales: 15000, discounts: 0, net_sales: 15000, cost_of_goods: 12000, gross_profit: 3000, refunds: 0, refund_count: 0, average_sale: 5000, by_payment: [{ method: 'cash', count: 3, total: 15000 }], by_day: [{ day: now.slice(0, 10), count: 3, total: 15000, profit: 3000 }], by_hour: [{ hour: 9, count: 1, total: 4000 }, { hour: 13, count: 2, total: 11000 }], top_products: [{ product_id: 'p1', name: 'Oran Coconut Falvoured UHT Milk -1 litre long name for overflow test', sku: 'SUG1', quantity: 3, revenue: 15000, profit: 2400 }], by_cashier: [{ cashier_id: uid, name: 'Owner', count: 3, total: 15000 }] };
 const fin = { trial_balance: [{ code: '1000', name: 'Cash', type: 'asset', debit: 15000, credit: 0 }, { code: '4000', name: 'Sales Revenue', type: 'revenue', debit: 0, credit: 15000 }], profit_and_loss: { revenue: 15000, discounts_returns: 0, net_revenue: 15000, cost_of_goods: 0, gross_profit: 15000, operating_expenses: 0, net_profit: 15000, lines: [] }, balance_sheet: { assets: [{ code: '1000', name: 'Cash', amount: 15000 }], liabilities: [], equity: [], retained_earnings: 15000, total_assets: 15000, total_liabilities_equity: 15000 } };
 
@@ -32,7 +33,7 @@ const intel = { days: 30, cover_days: 5, summary: { products: 2, stock_cost: 117
 
 function rest(table, url) {
   switch (table) {
-    case 'profiles': return { id: uid, full_name: 'Brian Owner', role: 'owner', active: true };
+    case 'profiles': return { id: uid, full_name: 'Brian Owner', role: mockRole, active: true };
     case 'store_settings': return settings;
     case 'products': return url.searchParams.get('select')?.startsWith('id') && url.searchParams.has('limit') && url.searchParams.get('limit') === '1' ? [] : products;
     case 'categories': return [{ id: 'c1', name: 'Food', active: true }];
@@ -280,6 +281,19 @@ await step('mobile layout has no horizontal scroll', async () => {
   if (off > 6) throw new Error('top-bar logo is ' + off + 'px off centre');
 });
 
+await step('every role has a working menu', async () => {
+  await page.setViewportSize({ width: 1280, height: 860 });
+  const expect = { cashier: ['Sell', 'Close day', 'Products', 'Settings'], accountant: ['Dashboard', 'Accounts', 'Inventory', 'Close day'], manager: ['Dashboard', 'Sell', 'Staff'], executive_director: ['Dashboard', 'Reports', 'Accounts'] };
+  for (const [role, want] of Object.entries(expect)) {
+    mockRole = role;
+    await page.goto('http://app.test/#/'); await page.reload();
+    await page.locator('.sidebar nav .nav-link').first().waitFor({ timeout: 8000 });
+    const labels = await page.$$eval('.sidebar nav .nav-link', a => a.map(x => x.textContent.trim()));
+    for (const w of want) if (!labels.includes(w)) throw new Error(role + ' menu is missing ' + w + ': ' + labels.join(','));
+    if (role === 'cashier' && labels.includes('Accounts')) throw new Error('cashier should not see Accounts');
+  }
+  mockRole = 'owner';
+});
 await browser.close();
 const real = errors.filter(e => !/Failed to load resource|WebSocket connection/.test(e));
 console.log(real.length ? '\nERRORS:\n' + real.join('\n') : '\nSMOKE TEST PASSED');
