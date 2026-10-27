@@ -5,6 +5,7 @@ import { db, rpc, run } from '../lib/supabase.js';
 import { state, is } from '../lib/state.js';
 import { money, num, date, dateTime, time, paymentLabel, todayISO, addDaysISO, rangeFor, currencyCode } from '../lib/format.js';
 import { loading, showError, toast } from '../lib/ui.js';
+import { backupDue } from '../lib/backup.js';
 import { lineChart, barChart, rankBars, donut, sparkline, ring, C } from '../lib/charts.js';
 
 const PERIODS = [
@@ -56,6 +57,7 @@ export async function render(root) {
         h('p', { class: 'exec-tag' }, s.tagline || 'Performance at a glance'),
         h('div', { class: 'exec-live' }, live, updated)),
       h('div', { class: 'exec-actions' }, periodSel, h('div', { class: 'row' }, presentBtn, printBtn))),
+    is('owner') && backupDue() ? h('div', { class: 'notice-bar no-print' }, h('span', null, 'No backup downloaded on this computer in the last day.'), h('a', { class: 'secondary small', href: '#/settings' }, 'Back up now')) : null,
     body));
 
   function drawPeriods() {
