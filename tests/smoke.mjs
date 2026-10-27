@@ -18,7 +18,7 @@ const products = [
   { id: 'p1', name: 'Sugar 1kg', sku: 'SUG1', barcode: '6001', selling_price: 5000, buying_price: 4200, quantity_on_hand: 10, reorder_level: 3, unit: 'piece', sold_by_weight: false, track_stock: true, available_for_sale: true, active: true, category_id: 'c1', categories: { name: 'Food' } },
   { id: 'p2', name: 'Rice', sku: 'RICE', barcode: null, selling_price: 4000, buying_price: 3000, quantity_on_hand: 25, reorder_level: 5, unit: 'kg', sold_by_weight: true, track_stock: true, available_for_sale: true, active: true, category_id: 'c1', categories: { name: 'Food' } }
 ];
-const settings = { id: true, business_name: 'Test Grocery', tagline: 'Fresh daily', logo_url: 'brand/dream-city-logo.jpeg', primary_color: '#16376A', currency_code: 'UGX', currency_decimals: 0, locale: 'en-UG', timezone: 'Africa/Kampala', receipt_prefix: 'TG', receipt_footer: 'Thanks', receipt_width: '80mm', stock_cover_days: 5, allow_cashier_discounts: false, setup_completed: true, phone: '', email: '', address: '', tax_id: '', receipt_header: '' };
+const settings = { id: true, business_name: 'Test Grocery', tagline: 'Fresh daily', logo_url: 'brand/dream-city-logo.jpeg', primary_color: '#16376A', currency_code: 'UGX', currency_decimals: 0, locale: 'en-UG', timezone: 'Africa/Kampala', receipt_prefix: 'TG', receipt_footer: 'Thanks', receipt_width: process.env.RECEIPT_WIDTH || '80mm', stock_cover_days: 5, allow_cashier_discounts: false, setup_completed: true, phone: '', email: '', address: '', tax_id: '', receipt_header: '' };
 const calls = [];
 const summary = { scope: 'shop', transactions: 3, gross_sales: 15000, discounts: 0, net_sales: 15000, cost_of_goods: 12000, gross_profit: 3000, refunds: 0, refund_count: 0, average_sale: 5000, by_payment: [{ method: 'cash', count: 3, total: 15000 }], by_day: [{ day: now.slice(0, 10), count: 3, total: 15000, profit: 3000 }], by_hour: [{ hour: 9, count: 1, total: 4000 }, { hour: 13, count: 2, total: 11000 }], top_products: [{ product_id: 'p1', name: 'Oran Coconut Falvoured UHT Milk -1 litre long name for overflow test', sku: 'SUG1', quantity: 3, revenue: 15000, profit: 2400 }], by_cashier: [{ cashier_id: uid, name: 'Owner', count: 3, total: 15000 }] };
 const fin = { trial_balance: [{ code: '1000', name: 'Cash', type: 'asset', debit: 15000, credit: 0 }, { code: '4000', name: 'Sales Revenue', type: 'revenue', debit: 0, credit: 15000 }], profit_and_loss: { revenue: 15000, discounts_returns: 0, net_revenue: 15000, cost_of_goods: 0, gross_profit: 15000, operating_expenses: 0, net_profit: 15000, lines: [] }, balance_sheet: { assets: [{ code: '1000', name: 'Cash', amount: 15000 }], liabilities: [], equity: [], retained_earnings: 15000, total_assets: 15000, total_liabilities_equity: 15000 } };
@@ -248,6 +248,10 @@ await step('accounts: owner money tab', async () => {
 await step('settings: backup button; offline banner', async () => {
   await page.goto('http://app.test/#/settings');
   await page.getByRole('button', { name: 'Download backup' }).waitFor();
+  await page.waitForTimeout(600);
+  const cut = await page.evaluate(() => { const f = document.querySelector('.receipt-preview'); const d = f.contentDocument; const b = d.body.getBoundingClientRect(); const wide = Math.max(...[...d.body.querySelectorAll('*')].map(e => e.getBoundingClientRect().right)); return { right: Math.round(Math.max(b.right, wide)), width: f.clientWidth, docH: Math.round(b.height), frameH: f.clientHeight }; });
+  if (cut.right > cut.width + 1) throw new Error('receipt preview is cut off on the right: ' + JSON.stringify(cut));
+  if (cut.frameH + 2 < cut.docH) throw new Error('receipt preview is cut off at the bottom: ' + JSON.stringify(cut));
   await page.getByText('Loyverse live sync').waitFor();
   await page.getByText('new sales 4').waitFor();
   await page.getByRole('button', { name: 'Turn on instant sync' }).waitFor();
