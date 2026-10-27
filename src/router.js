@@ -5,6 +5,7 @@ const views = {
   home: () => import('./views/home.js'),
   executive: () => import('./views/executive.js'),
   sell: () => import('./views/sell.js'),
+  close: () => import('./views/closeday.js'),
   products: () => import('./views/products.js'),
   customers: () => import('./views/customers.js'),
   buy: () => import('./views/buy.js'),
@@ -19,6 +20,7 @@ const views = {
 
 let mainEl = null;
 let allowed = [];
+let home = 'sell';
 let renderToken = 0;
 let cleanup = null;
 
@@ -27,6 +29,7 @@ function onHash() { render(); }
 export function startRouter(main, navItems) {
   mainEl = main;
   allowed = navItems.map(n => n.path);
+  home = (navItems.find(n => !n.hidden) || { path: 'sell' }).path;
   window.addEventListener('hashchange', onHash);
   render();
 }
@@ -43,8 +46,8 @@ export function navigate(path) {
 
 async function render() {
   if (!mainEl) return;
-  const [path, query] = (location.hash.replace(/^#\/?/, '') || 'home').split('?');
-  const name = allowed.includes(path) && views[path] ? path : 'home';
+  const [path, query] = (location.hash.replace(/^#\/?/, '') || home).split('?');
+  const name = allowed.includes(path) && views[path] ? path : home;
   const token = ++renderToken;
   if (cleanup) { try { cleanup(); } catch { /* ignore */ } cleanup = null; }
   document.body.classList.remove('drawer-open');
