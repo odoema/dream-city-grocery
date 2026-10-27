@@ -4,5 +4,5 @@ import { defineConfig } from 'vite';
 // custom domains and sub-folders without changes (white-label friendly).
 export default defineConfig({
   base: './',
-  build: { outDir: 'dist', sourcemap: true, chunkSizeWarningLimit: 900 }
+  build: { outDir: 'dist', sourcemap: false, chunkSizeWarningLimit: 900 }
 });
