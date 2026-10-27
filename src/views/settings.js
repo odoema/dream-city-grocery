@@ -20,6 +20,25 @@ export async function render(root) {
 function shopSettings() {
   const s = state.settings || {};
   const preview = h('iframe', { class: 'receipt-preview', title: 'Receipt preview' });
+  // Shrink the whole receipt (A4 is ~690px wide) to fit the preview box, and show it full length.
+  const fitPreview = () => {
+    if (!preview.isConnected) return window.removeEventListener('resize', fitPreview);
+    const doc = preview.contentDocument;
+    const body = doc?.body;
+    if (!body || !preview.clientWidth) return;
+    body.style.transform = ''; body.style.width = '';
+    const natural = Math.max(doc.documentElement.scrollWidth, body.scrollWidth);
+    const scale = Math.min(1, (preview.clientWidth - 2) / natural);
+    doc.documentElement.style.overflow = 'hidden';
+    if (scale < 1) {
+      body.style.width = natural + 'px';
+      body.style.transformOrigin = '0 0';
+      body.style.transform = 'scale(' + scale + ')';
+    }
+    preview.style.height = Math.ceil(doc.documentElement.scrollHeight * scale + 8) + 'px';
+  };
+  preview.addEventListener('load', () => { fitPreview(); setTimeout(fitPreview, 300); });
+  window.addEventListener('resize', fitPreview);
   const form = h('form', null,
     formFields([
       { type: 'section', label: 'Shop' },
