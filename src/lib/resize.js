@@ -5,8 +5,8 @@ const KEY = 'ui.sizes.v1';
 const LOCK_KEY = 'ui.layoutLocked';
 const DEFAULTS = { '--cart-w': '380px', '--cart-split': '50%' };
 
-// Layout is locked by default; only the owner can unlock it (Settings → This till's layout).
-export function isLayoutLocked() { try { return localStorage.getItem(LOCK_KEY) !== 'no'; } catch { return true; } }
+// Borders are movable by default; the owner can lock them per till (Settings → This till's layout).
+export function isLayoutLocked() { try { return localStorage.getItem(LOCK_KEY) === 'yes'; } catch { return false; } }
 export function setLayoutLocked(locked) {
   try { localStorage.setItem(LOCK_KEY, locked ? 'yes' : 'no'); } catch { /* private mode */ }
   document.body.classList.toggle('layout-locked', locked);
