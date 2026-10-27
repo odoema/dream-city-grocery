@@ -7,15 +7,16 @@ import { money, num, dateTime, time, paymentLabel, todayISO, rangeFor, date } fr
 import { pageHeader, card, stat, showError, toast, loading, withBusy, formFields, readForm, badge } from '../lib/ui.js';
 import { printDocument } from '../lib/documents.js';
 
-const manager = () => is('owner', 'manager', 'accountant');
+const manager = () => is('owner', 'manager', 'accountant', 'executive_director');
+const viewOnly = () => is('executive_director');
 
 export async function render(root) {
   const mine = h('div');
   const report = h('div');
-  clear(root, pageHeader('Close day', manager()
+  clear(root, pageHeader('Close day', viewOnly() ? 'The whole shop\'s day: sales, drawers counted, expenses and returns. Print or send it.' : manager()
     ? 'Count your drawer, then check the whole shop\'s day and send it to the Executive Director.'
     : 'Count the cash in your drawer before you go home.'), mine, manager() ? report : null);
-  await drawMine(mine);
+  if (viewOnly()) clear(mine); else await drawMine(mine);
   if (manager()) await drawReport(report, todayISO());
 }
 
