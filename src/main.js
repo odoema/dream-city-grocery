@@ -112,17 +112,18 @@ export async function signOut() {
 }
 
 // ------------------------------------------------------------------ shell
-// Hidden items still work as links (e.g. Settings → Import, Inventory → Count stock) but stay out of the menu.
+// Management visibility is intentionally broad: the Executive Director sees the same
+// management information as the Owner, while the router keeps write/operational routes read-only.
 export const NAV = [
-  { path: 'executive', label: 'Dashboard', icon: 'dashboard', roles: ['owner', 'manager', 'accountant'] },
+  { path: 'executive', label: 'Dashboard', icon: 'dashboard', roles: ['owner', 'manager', 'accountant', 'executive_director'] },
   { path: 'sell', label: 'Sell', icon: 'sell', roles: null },
   { path: 'close', label: 'Close day', icon: 'close', roles: null },
-  { path: 'products', label: 'Products', icon: 'products', roles: null },
-  { path: 'customers', label: 'Customers', icon: 'customers', roles: null },
+  { path: 'products', label: 'Products', icon: 'products', roles: ['owner', 'manager', 'accountant', 'executive_director'] },
+  { path: 'customers', label: 'Customers', icon: 'customers', roles: ['owner', 'manager', 'accountant', 'executive_director'] },
   { path: 'buy', label: 'Buy', icon: 'buy', roles: null },
-  { path: 'inventory', label: 'Inventory', icon: 'inventory', roles: ['owner', 'manager', 'accountant'] },
-  { path: 'reports', label: 'Reports', icon: 'reports', roles: null },
-  { path: 'accounts', label: 'Accounts', icon: 'accounts', roles: ['owner', 'manager', 'accountant'] },
+  { path: 'inventory', label: 'Inventory', icon: 'inventory', roles: ['owner', 'manager', 'accountant', 'executive_director'] },
+  { path: 'reports', label: 'Reports', icon: 'reports', roles: ['owner', 'manager', 'accountant', 'executive_director'] },
+  { path: 'accounts', label: 'Accounts', icon: 'accounts', roles: ['owner', 'manager', 'accountant', 'executive_director'] },
   { path: 'staff', label: 'Staff', icon: 'staff', roles: ['owner', 'manager'] },
   { path: 'settings', label: 'Settings', icon: 'settings', roles: null },
   { path: 'home', label: 'Home', icon: 'home', roles: null, hidden: true },
@@ -147,7 +148,7 @@ function renderShell() {
     h('button', { class: 'icon-btn menu-btn', 'aria-label': 'Open menu', onclick: () => document.body.classList.toggle('drawer-open') }, '☰'),
     s.logo_url ? h('img', { src: s.logo_url, alt: '', class: 'brand-logo-top' }) : null,
     h('b', null, s.business_name || 'Grocery'),
-    h('a', { class: 'primary small', href: '#/sell' }, 'Sell'));
+    state.profile.role === 'executive_director' ? null : h('a', { class: 'primary small', href: '#/sell' }, 'Sell'));
   const bottom = h('nav', { class: 'bottom-nav', 'aria-label': 'Quick' },
     items.filter(n => ['executive', 'sell', 'close', 'products'].includes(n.path)).slice(0, 4).map(navLink),
     h('button', { class: 'nav-link', onclick: () => document.body.classList.toggle('drawer-open') }, h('span', { class: 'nav-icon', html: icon('menu') }), h('span', null, 'More')));
