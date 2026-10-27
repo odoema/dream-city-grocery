@@ -198,14 +198,17 @@ await step('executive dashboard renders with live data', async () => {
   await page.getByRole('tab', { name: 'Today' }).click();
   await page.getByText('Sales by hour today').waitFor({ timeout: 8000 });
 });
-await step('layout lock: borders locked by default, owner can unlock', async () => {
+await step('layout lock: borders movable by default, owner can lock', async () => {
   await page.goto('http://app.test/#/sell');
   await page.locator('.pos-resizer').waitFor();
-  if (!(await page.evaluate(() => document.body.classList.contains('layout-locked')))) throw new Error('not locked by default');
+  if (await page.evaluate(() => document.body.classList.contains('layout-locked'))) throw new Error('should be movable by default');
+  const side = await page.evaluate(() => { const p = document.querySelector('.pos-products').getBoundingClientRect(), c = document.querySelector('.pos-cart').getBoundingClientRect(); return c.left >= p.right; });
+  if (!side) throw new Error('sale column is not beside the products');
   await page.goto('http://app.test/#/settings');
   await page.getByText("This till's layout").waitFor();
+  await page.getByLabel('Lock layout').check();
+  if (!(await page.evaluate(() => document.body.classList.contains('layout-locked')))) throw new Error('did not lock');
   await page.getByLabel('Lock layout').uncheck();
-  if (await page.evaluate(() => document.body.classList.contains('layout-locked'))) throw new Error('did not unlock');
   if (await page.locator('.sidebar-resizer').count()) throw new Error('menu border should be gone');
 });
 await step('mobile layout has no horizontal scroll', async () => {
