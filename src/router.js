@@ -1,5 +1,6 @@
 import { h, clear, $$ } from './lib/dom.js';
 import { loading } from './lib/ui.js';
+import { state } from './lib/state.js';
 
 const views = {
   home: () => import('./views/home.js'),
@@ -17,6 +18,8 @@ const views = {
   staff: () => import('./views/staff.js'),
   settings: () => import('./views/settings.js')
 };
+
+const executiveReadOnlyPaths = new Set(['executive', 'products', 'customers', 'inventory', 'reports', 'accounts']);
 
 let mainEl = null;
 let allowed = [];
@@ -46,8 +49,12 @@ export function navigate(path) {
 
 async function render() {
   if (!mainEl) return;
-  const [path, query] = (location.hash.replace(/^#\/?/, '') || home).split('?');
-  const name = allowed.includes(path) && views[path] ? path : home;
+  const [requestedPath, query] = (location.hash.replace(/^#\/?/, '') || home).split('?');
+  const executive = state.profile?.role === 'executive_director';
+  const requestedAllowed = allowed.includes(requestedPath) && views[requestedPath];
+  const name = executive
+    ? (requestedAllowed && executiveReadOnlyPaths.has(requestedPath) ? requestedPath : 'executive')
+    : (requestedAllowed ? requestedPath : home);
   const token = ++renderToken;
   if (cleanup) { try { cleanup(); } catch { /* ignore */ } cleanup = null; }
   document.body.classList.remove('drawer-open');
