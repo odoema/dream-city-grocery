@@ -22,7 +22,7 @@ export async function render(root, { params }) {
   const tabHost = h('div');
   const body = h('div');
   const items = [['overview', 'Overview'], ['adjust', 'Adjust stock'], ['history', 'History'], ['valuation', 'Valuation'], ['returns', 'Supplier returns'], ['labels', 'Labels']];
-  clear(root, pageHeader('Inventory', 'What you have, what it is worth, what is selling and what needs attention.'), tabHost, body);
+  clear(root, pageHeader('Inventory', 'What you have, what it is worth, what is selling and what needs attention.', h('a', { class: 'primary', href: '#/count' }, 'Count stock')), tabHost, body);
 
   async function show(next) {
     tab = next;
