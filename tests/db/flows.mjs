@@ -338,3 +338,17 @@ console.log('ALL DAILY CONTROL TESTS PASSED');
   assert.equal(Number(fs3.r.balance_sheet.total_assets), Number(fs3.r.balance_sheet.total_liabilities_equity));
 }
 console.log('ALL LOYVERSE SYNC TESTS PASSED');
+
+// ---------------------------------------------------------------- automatic reports
+{
+  await db.exec('set role service_role'); await db.exec('reset role');
+  const ev = await one(`select public.build_shop_report('evening') r`);
+  assert.ok(/sales/i.test(ev.r.subject) && ev.r.html.includes('Day report') && ev.r.text.includes('Gross profit'));
+  const mo = await one(`select public.build_shop_report('morning') r`);
+  assert.ok(/shopping list/.test(mo.r.subject) && mo.r.html.includes('Shopping list'));
+  console.log('  evening:', ev.r.subject); console.log('  morning:', mo.r.subject); if (process.env.SHOW_REPORTS) { console.log(ev.r.text); console.log(mo.r.text); }
+  await expectFail(OWNER, `select public.build_shop_report('evening')`, [], /permission denied/);
+  await expectFail(CASHIER, `select public.send_shop_report('evening')`, [], /not allowed|vault|does not exist/);
+  pass('automatic reports: evening report and morning shopping list build; not callable by staff directly');
+}
+console.log('ALL REPORT TESTS PASSED');
