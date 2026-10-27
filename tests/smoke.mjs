@@ -283,7 +283,7 @@ await step('mobile layout has no horizontal scroll', async () => {
 
 await step('every role has a working menu', async () => {
   await page.setViewportSize({ width: 1280, height: 860 });
-  const expect = { cashier: ['Sell', 'Close day', 'Products', 'Settings'], accountant: ['Dashboard', 'Accounts', 'Inventory', 'Close day'], manager: ['Dashboard', 'Sell', 'Staff'], executive_director: ['Dashboard', 'Reports', 'Accounts'] };
+  const expect = { cashier: ['Sell', 'Close day', 'Products', 'Settings'], accountant: ['Dashboard', 'Accounts', 'Inventory', 'Close day'], manager: ['Dashboard', 'Sell', 'Staff'], executive_director: ['Dashboard', 'Reports', 'Accounts', 'Inventory', 'Close day', 'Settings'] };
   for (const [role, want] of Object.entries(expect)) {
     mockRole = role;
     await page.goto('http://app.test/#/'); await page.reload();
@@ -291,6 +291,14 @@ await step('every role has a working menu', async () => {
     const labels = await page.$$eval('.sidebar nav .nav-link', a => a.map(x => x.textContent.trim()));
     for (const w of want) if (!labels.includes(w)) throw new Error(role + ' menu is missing ' + w + ': ' + labels.join(','));
     if (role === 'cashier' && labels.includes('Accounts')) throw new Error('cashier should not see Accounts');
+    if (role === 'executive_director') {
+      if (labels.includes('Sell') || labels.includes('Buy')) throw new Error('view-only should not see Sell/Buy');
+      await page.goto('http://app.test/#/accounts'); await page.getByText('Trial balance').first().waitFor({ timeout: 8000 });
+      if (await page.getByRole('button', { name: '+ Record expense' }).isVisible()) throw new Error('view-only can see Record expense');
+      await page.getByRole('button', { name: 'Export CSV' }).first().waitFor();
+      await page.goto('http://app.test/#/close'); await page.getByText('Send on WhatsApp').waitFor({ timeout: 8000 });
+      if (await page.getByText('Count my drawer').count()) throw new Error('view-only sees the cash-up form');
+    }
   }
   mockRole = 'owner';
 });
