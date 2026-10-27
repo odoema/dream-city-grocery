@@ -20,7 +20,7 @@ const products = [
 ];
 const settings = { id: true, business_name: 'Test Grocery', tagline: 'Fresh daily', logo_url: 'brand/dream-city-logo.jpeg', primary_color: '#16376A', currency_code: 'UGX', currency_decimals: 0, locale: 'en-UG', timezone: 'Africa/Kampala', receipt_prefix: 'TG', receipt_footer: 'Thanks', receipt_width: '80mm', stock_cover_days: 5, allow_cashier_discounts: false, setup_completed: true, phone: '', email: '', address: '', tax_id: '', receipt_header: '' };
 const calls = [];
-const summary = { scope: 'shop', transactions: 3, gross_sales: 15000, discounts: 0, net_sales: 15000, cost_of_goods: 12000, gross_profit: 3000, refunds: 0, refund_count: 0, average_sale: 5000, by_payment: [{ method: 'cash', count: 3, total: 15000 }], by_day: [{ day: now.slice(0, 10), count: 3, total: 15000, profit: 3000 }], by_hour: [{ hour: 9, count: 1, total: 4000 }, { hour: 13, count: 2, total: 11000 }], top_products: [{ product_id: 'p1', name: 'Sugar 1kg', sku: 'SUG1', quantity: 3, revenue: 15000, profit: 2400 }], by_cashier: [{ cashier_id: uid, name: 'Owner', count: 3, total: 15000 }] };
+const summary = { scope: 'shop', transactions: 3, gross_sales: 15000, discounts: 0, net_sales: 15000, cost_of_goods: 12000, gross_profit: 3000, refunds: 0, refund_count: 0, average_sale: 5000, by_payment: [{ method: 'cash', count: 3, total: 15000 }], by_day: [{ day: now.slice(0, 10), count: 3, total: 15000, profit: 3000 }], by_hour: [{ hour: 9, count: 1, total: 4000 }, { hour: 13, count: 2, total: 11000 }], top_products: [{ product_id: 'p1', name: 'Oran Coconut Falvoured UHT Milk -1 litre long name for overflow test', sku: 'SUG1', quantity: 3, revenue: 15000, profit: 2400 }], by_cashier: [{ cashier_id: uid, name: 'Owner', count: 3, total: 15000 }] };
 const fin = { trial_balance: [{ code: '1000', name: 'Cash', type: 'asset', debit: 15000, credit: 0 }, { code: '4000', name: 'Sales Revenue', type: 'revenue', debit: 0, credit: 15000 }], profit_and_loss: { revenue: 15000, discounts_returns: 0, net_revenue: 15000, cost_of_goods: 0, gross_profit: 15000, operating_expenses: 0, net_profit: 15000, lines: [] }, balance_sheet: { assets: [{ code: '1000', name: 'Cash', amount: 15000 }], liabilities: [], equity: [], retained_earnings: 15000, total_assets: 15000, total_liabilities_equity: 15000 } };
 
 const intel = { days: 30, cover_days: 5, summary: { products: 2, stock_cost: 117000, stock_retail: 150000, potential_profit: 33000, units_on_hand: 35, revenue: 15000, profit: 2400, out: 0, low: 1, running_out: 1, dead: 1, dead_value: 75000, overstock: 0, loss_making: 0, no_price: 0, no_cost: 0, abc: { A: 1, B: 0, C: 0, D: 1 } },
@@ -206,6 +206,8 @@ await step('executive dashboard renders with live data', async () => {
   await page.getByText('Who this shop serves').waitFor({ timeout: 8000 });
   await page.getByText('Financial position').waitFor();
   await page.locator('.kpi').first().waitFor();
+  const spill = await page.evaluate(() => [...document.querySelectorAll('.rank-row')].filter(r => { const c = r.closest('section, .panel, .card, .exec-panel') || r.parentElement; return r.getBoundingClientRect().right > c.getBoundingClientRect().right + 1; }).length);
+  if (spill) throw new Error(spill + ' ranked rows spill out of their card');
   await page.screenshot({ path: 'tests/screens/executive.png', fullPage: true });
   await page.getByRole('tab', { name: 'Today' }).click();
   await page.getByText('Sales by hour today').waitFor({ timeout: 8000 });
@@ -263,6 +265,8 @@ await step('mobile layout has no horizontal scroll', async () => {
   }
   await page.goto('http://app.test/#/sell'); await page.waitForTimeout(500);
   await page.screenshot({ path: 'tests/screens/mobile-sell.png', fullPage: true });
+  const off = await page.evaluate(() => { const l = document.querySelector('.brand-logo-top').getBoundingClientRect(); return Math.abs((l.left + l.right) / 2 - window.innerWidth / 2); });
+  if (off > 6) throw new Error('top-bar logo is ' + off + 'px off centre');
 });
 
 await browser.close();
