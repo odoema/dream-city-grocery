@@ -9,7 +9,7 @@ const ROLE_HELP = {
   manager: 'Sell, products, prices, discounts, refunds, buying, counts, accounts.',
   accountant: 'Buying, supplier payments, counts, accounts and reports.',
   cashier: 'Sell, receive customer payments, view products and own sales.',
-  executive_director: 'Read-only oversight: dashboard, reports, products, customers, inventory and financial information. Cannot operate the POS, change settings or manage staff.'
+  executive_director: 'View only: sees everything (dashboard, reports, accounts, stock, customers, day report) and can print and download, but cannot sell or change anything. For the Executive Director, board members and auditors.'
 };
 
 export async function render(root) {
