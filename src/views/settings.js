@@ -12,7 +12,7 @@ import { dateTime } from '../lib/format.js';
 
 export async function render(root) {
   const parts = [pageHeader('Settings', can.settings() ? 'Shop details, receipts and your account.' : 'Your account.')];
-  if (can.settings()) parts.push(shopSettings(), h('div', { class: 'grid-2' }, dataSettings(), layoutSettings()), loyverseSettings());
+  if (can.settings()) parts.push(shopSettings(), h('div', { class: 'grid-2' }, dataSettings(), layoutSettings()), h('div', { class: 'grid-2' }, loyverseSettings(), reportSettings()));
   parts.push(myAccount());
   clear(root, ...parts);
 }
@@ -120,8 +120,30 @@ function loyverseSettings() {
     } catch (e) { showError(e); }
     await draw();
   }) }, 'Sync now');
+  const instant = h('button', { class: 'secondary', type: 'button', onclick: () => withBusy(instant, async () => {
+    try {
+      const { data, error } = await db().functions.invoke('loyverse-sync', { body: { action: 'register-webhook' } });
+      if (error) throw error;
+      if (data?.ok === false) throw new Error(data.error);
+      toast(data?.webhook === 'already on' ? 'Instant sync was already on.' : 'Instant sync is on: Loyverse now tells this app about every receipt.');
+    } catch (e) { showError(e); }
+  }) }, 'Turn on instant sync');
   draw();
-  return card('Loyverse live sync', h('p', null, 'Every few minutes this app reads Loyverse: new sales and refunds, prices, costs and stock.'), body, h('div', { class: 'row' }, btn));
+  return card('Loyverse live sync', h('p', null, 'Every few minutes this app reads Loyverse: new sales and refunds, prices, costs and stock.'), body, h('div', { class: 'row' }, btn, instant));
+}
+
+// Automatic emails: evening report (21:15) and morning shopping list (06:45), sent by the Google mailer.
+function reportSettings() {
+  const send = (kind, label) => {
+    const b = h('button', { class: kind === 'evening' ? 'primary' : 'secondary', type: 'button', onclick: () => withBusy(b, async () => {
+      try { const r = await rpc('send_shop_report', { p_kind: kind }); toast('Sent: ' + r.subject); }
+      catch (e) { showError(e); }
+    }) }, label);
+    return b;
+  };
+  return card('Automatic reports',
+    h('p', null, 'Every evening at 21:15 the Executive Director gets the day\'s sales, profit, cash and best sellers. Every morning at 06:45 the buyer gets today\'s shopping list. Both by email, sent automatically.'),
+    h('div', { class: 'row' }, send('evening', 'Send today\'s report now'), send('morning', 'Send shopping list now')));
 }
 
 // Per-till layout lock (owner only). Saved on this computer, like the sizes themselves.
