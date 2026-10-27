@@ -86,16 +86,16 @@ export async function signOut() {
 // Operational/admin controls remain Owner/Manager/Accountant only.
 export const NAV = [
   { path: 'executive', label: 'Dashboard', icon: 'dashboard', roles: ['owner', 'manager', 'accountant', 'executive_director'] },
-  { path: 'sell', label: 'Sell', icon: 'sell', roles: ['owner', 'manager', 'accountant'] },
-  { path: 'close', label: 'Close day', icon: 'close', roles: ['owner', 'manager', 'accountant'] },
-  { path: 'products', label: 'Products', icon: 'products', roles: ['owner', 'manager', 'accountant', 'executive_director'] },
-  { path: 'customers', label: 'Customers', icon: 'customers', roles: ['owner', 'manager', 'accountant', 'executive_director'] },
-  { path: 'buy', label: 'Buy', icon: 'buy', roles: ['owner', 'manager', 'accountant'] },
+  { path: 'sell', label: 'Sell', icon: 'sell', roles: ['owner', 'manager', 'accountant', 'cashier'] },
+  { path: 'close', label: 'Close day', icon: 'close', roles: ['owner', 'manager', 'accountant', 'cashier'] },
+  { path: 'products', label: 'Products', icon: 'products', roles: ['owner', 'manager', 'accountant', 'executive_director', 'cashier'] },
+  { path: 'customers', label: 'Customers', icon: 'customers', roles: ['owner', 'manager', 'accountant', 'executive_director', 'cashier'] },
+  { path: 'buy', label: 'Buy', icon: 'buy', roles: ['owner', 'manager', 'accountant', 'cashier'] },
   { path: 'inventory', label: 'Inventory', icon: 'inventory', roles: ['owner', 'manager', 'accountant', 'executive_director'] },
-  { path: 'reports', label: 'Reports', icon: 'reports', roles: ['owner', 'manager', 'accountant', 'executive_director'] },
+  { path: 'reports', label: 'Reports', icon: 'reports', roles: ['owner', 'manager', 'accountant', 'executive_director', 'cashier'] },
   { path: 'accounts', label: 'Accounts', icon: 'accounts', roles: ['owner', 'manager', 'accountant', 'executive_director'] },
   { path: 'staff', label: 'Staff', icon: 'staff', roles: ['owner', 'manager'] },
-  { path: 'settings', label: 'Settings', icon: 'settings', roles: ['owner', 'manager', 'accountant'] },
+  { path: 'settings', label: 'Settings', icon: 'settings', roles: ['owner', 'manager', 'accountant', 'cashier'] },
   { path: 'home', label: 'Home', icon: 'home', roles: null, hidden: true },
   { path: 'count', label: 'Count stock', icon: 'count', roles: ['owner', 'manager', 'accountant'], hidden: true },
   { path: 'import', label: 'Import data', icon: 'import', roles: ['owner', 'manager'], hidden: true }
