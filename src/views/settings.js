@@ -7,10 +7,12 @@ import { CURRENCIES, timezones, localeFor } from './setup.js';
 import { applyBranding } from '../main.js';
 import { uploadLogo } from '../lib/branding.js';
 import { isLayoutLocked, setLayoutLocked, resetLayout } from '../lib/resize.js';
+import { downloadBackup, lastBackupAt } from '../lib/backup.js';
+import { dateTime } from '../lib/format.js';
 
 export async function render(root) {
   const parts = [pageHeader('Settings', can.settings() ? 'Shop details, receipts and your account.' : 'Your account.')];
-  if (can.settings()) parts.push(shopSettings(), layoutSettings());
+  if (can.settings()) parts.push(shopSettings(), h('div', { class: 'grid-2' }, dataSettings(), layoutSettings()));
   parts.push(myAccount());
   clear(root, ...parts);
 }
@@ -72,6 +74,23 @@ function shopSettings() {
   });
   drawPreview();
   return h('div', { class: 'grid-2 settings' }, card('Shop settings', form), card('Receipt preview', preview));
+}
+
+// Backup (daily) and one-time data import.
+function dataSettings() {
+  const status = h('p', { class: 'muted small' });
+  const say = () => { const at = lastBackupAt(); status.textContent = at ? 'Last backup on this computer: ' + dateTime(at) + '.' : 'No backup downloaded on this computer yet.'; };
+  say();
+  const btn = h('button', { class: 'primary', type: 'button', onclick: () => withBusy(btn, async () => {
+    try {
+      const r = await downloadBackup(t => { status.textContent = 'Saving ' + t + '…'; });
+      toast(`Backup saved: ${r.rows.toLocaleString()} records.` + (r.skipped.length ? ' Skipped: ' + r.skipped.join(', ') : ''));
+    } catch (e) { showError(e); }
+    say();
+  }) }, 'Download backup');
+  return card('Backup & data',
+    h('p', null, 'Download a copy of all products, customers, sales and the accounts as one file. Do it at the end of each day and keep the file somewhere safe (a flash disk or Google Drive).'),
+    h('div', { class: 'row' }, btn, h('a', { class: 'secondary', href: '#/import' }, 'Import from Loyverse')), status);
 }
 
 // Per-till layout lock (owner only). Saved on this computer, like the sizes themselves.
