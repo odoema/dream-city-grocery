@@ -1,6 +1,6 @@
 {
-  "name": "Grocery POS",
-  "short_name": "POS",
+  "name": "Dream City Grocery POS",
+  "short_name": "Grocery POS",
   "description": "Point of sale, stock, purchasing and accounts.",
   "start_url": "./",
   "scope": "./",
