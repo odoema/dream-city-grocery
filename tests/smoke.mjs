@@ -250,6 +250,8 @@ await step('settings: backup button; offline banner', async () => {
   await page.getByRole('button', { name: 'Download backup' }).waitFor();
   await page.getByText('Loyverse live sync').waitFor();
   await page.getByText('new sales 4').waitFor();
+  await page.getByRole('button', { name: 'Turn on instant sync' }).waitFor();
+  await page.getByRole('button', { name: 'Send shopping list now' }).waitFor();
   await page.context().setOffline(true);
   await page.locator('.offline-bar').waitFor({ timeout: 3000 });
   await page.context().setOffline(false);
