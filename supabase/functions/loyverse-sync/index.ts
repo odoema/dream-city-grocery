@@ -1,9 +1,11 @@
 // Loyverse -> Grocery POS live sync (Supabase Edge Function).
 // Reads the Loyverse API with the LOYVERSE_TOKEN secret and hands the data to
 // public.loyverse_sync_apply() in the database, which does all the bookkeeping.
-// Safe to call any time: the database throttles to one run per minute and skips
-// receipts it has already recorded. Deploy with "Verify JWT" switched OFF so the
-// scheduled job and the app's "Sync now" button can both call it.
+// Safe to call any time: the database throttles to one run every 20 seconds and
+// skips receipts it has already recorded. Called by the 5-minute schedule, the
+// app's "Sync now" button, and (for instant sync) a Loyverse webhook on every
+// receipt. The webhook sends no Supabase key, so instant sync needs "Verify JWT"
+// switched OFF for this function.
 
 const LV = 'https://api.loyverse.com/v1.0';
 const TOKEN = Deno.env.get('LOYVERSE_TOKEN') ?? '';
@@ -70,6 +72,25 @@ Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   const reply = (body: Json, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
   if (!TOKEN) return reply({ ok: false, error: 'LOYVERSE_TOKEN secret is missing' }, 500);
+
+  // One-time setup from Settings: ask Loyverse to call this function on every new receipt.
+  const input: Json = await req.clone().json().catch(() => ({}));
+  if (input?.action === 'register-webhook') {
+    try {
+      const url = SB_URL.replace(/\/$/, '') + '/functions/v1/loyverse-sync';
+      const existing = (await lv('/webhooks')).webhooks ?? [];
+      const mine = existing.find((w: Json) => w.url === url && w.type === 'receipts.update');
+      if (mine && mine.status === 'ENABLED') return reply({ ok: true, webhook: 'already on' });
+      const r = await fetch(LV + '/webhooks', {
+        method: 'POST', headers: { Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...(mine ? { id: mine.id } : {}), url, type: 'receipts.update', status: 'ENABLED' })
+      });
+      if (!r.ok) throw new Error('Loyverse refused the webhook: ' + r.status + ' ' + (await r.text()).slice(0, 200));
+      return reply({ ok: true, webhook: 'on' });
+    } catch (e) {
+      return reply({ ok: false, error: e instanceof Error ? e.message : String(e) }, 500);
+    }
+  }
 
   let started = false;
   try {
