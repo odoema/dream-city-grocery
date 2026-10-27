@@ -567,3 +567,22 @@ body.present { font-size: 17px; }
 .qty-input { width: 6rem; text-align: right; }
 .grid-2 > * { min-width: 0; }
 .card-head input[type=date] { width: auto; }
+
+/* Dashboard lists: long names shrink with "…", the amount never spills out of the card. */
+.exec-grid > * { min-width: 0; }
+.rank-row { grid-template-columns: 22px minmax(0, 1fr); }
+.rank-body { min-width: 0; }
+.rank-label { min-width: 0; flex: 1 1 auto; }
+.rank-top b { flex: 0 0 auto; white-space: nowrap; }
+
+/* Logo centred everywhere: sidebar frame, and the phone/tablet top bar (menu | logo | Sell). */
+.sidebar .brand { align-items: center; text-align: center; }
+.sidebar .brand .brand-logo { object-position: center; margin-inline: auto; }
+@media (max-width: 860px) {
+  .topbar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+  .topbar .menu-btn { justify-self: start; }
+  .topbar .brand-logo-top { justify-self: center; }
+  .topbar .brand-logo-top + b { display: none; }
+  .topbar > a.primary { justify-self: end; }
+  .topbar > b { text-align: center; }
+}
