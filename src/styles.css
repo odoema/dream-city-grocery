@@ -361,7 +361,10 @@ details.journal summary { display: flex; gap: 1rem; cursor: pointer; flex-wrap: 
 .stat strong { color: var(--navy); }
 .chart .bar { fill: var(--navy); } .chart .bar:hover { fill: var(--orange); opacity: 1; }
 .auth-brand img { width: 220px; height: 220px; border-radius: 18px; padding: .4rem; }
-.auth-brand { flex-direction: column; align-items: flex-start; }
+.auth-brand { flex-direction: column; align-items: center; text-align: center; width: 100%; }
+.auth-brand img { margin-inline: auto; object-fit: contain; background: var(--white); }
+.auth-story h1, .auth-story > p { text-align: center; }
+.auth-points { justify-self: center; align-self: center; }
 .brand-logo-top { height: 40px; width: auto; background: var(--white); border-radius: 8px; padding: 2px; }
 @media (max-width: 860px) {
   .topbar { background: var(--navy) !important; color: var(--white); border-bottom: 3px solid var(--orange) !important; }
