@@ -8,7 +8,8 @@ const ROLE_HELP = {
   owner: 'Everything, including settings and staff.',
   manager: 'Sell, products, prices, discounts, refunds, buying, counts, accounts.',
   accountant: 'Buying, supplier payments, counts, accounts and reports.',
-  cashier: 'Sell, receive customer payments, view products and own sales.'
+  cashier: 'Sell, receive customer payments, view products and own sales.',
+  executive_director: 'Read-only oversight: dashboard, reports, products, customers, inventory and financial information. Cannot operate the POS, change settings or manage staff.'
 };
 
 export async function render(root) {
