@@ -352,3 +352,11 @@ console.log('ALL LOYVERSE SYNC TESTS PASSED');
   pass('automatic reports: evening report and morning shopping list build; not callable by staff directly');
 }
 console.log('ALL REPORT TESTS PASSED');
+
+// ---------------------------------------------------------------- executive director setting
+{
+  const st = await rpc(OWNER, `select public.update_store_settings($1) s`, [{ director_name: 'Hon. Dr. Test Director', director_title: 'Executive Director' }]);
+  assert.equal(st.s.director_name, 'Hon. Dr. Test Director');
+  await expectFail(CASHIER, `select public.update_store_settings($1)`, [{ director_name: 'x' }], /not allowed/);
+  pass('executive director saved in shop settings (owner only)');
+}
