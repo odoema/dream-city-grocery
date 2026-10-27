@@ -1,5 +1,5 @@
 import { h, clear } from '../lib/dom.js';
-import { db, rpc } from '../lib/supabase.js';
+import { db, rpc, run } from '../lib/supabase.js';
 import { state, can } from '../lib/state.js';
 import { pageHeader, card, formFields, readForm, toast, showError, withBusy } from '../lib/ui.js';
 import { receiptHtml } from '../lib/receipt.js';
@@ -12,7 +12,7 @@ import { dateTime } from '../lib/format.js';
 
 export async function render(root) {
   const parts = [pageHeader('Settings', can.settings() ? 'Shop details, receipts and your account.' : 'Your account.')];
-  if (can.settings()) parts.push(shopSettings(), h('div', { class: 'grid-2' }, dataSettings(), layoutSettings()));
+  if (can.settings()) parts.push(shopSettings(), h('div', { class: 'grid-2' }, dataSettings(), layoutSettings()), loyverseSettings());
   parts.push(myAccount());
   clear(root, ...parts);
 }
@@ -91,6 +91,37 @@ function dataSettings() {
   return card('Backup & data',
     h('p', null, 'Download a copy of all products, customers, sales and the accounts as one file. Do it at the end of each day and keep the file somewhere safe (a flash disk or Google Drive).'),
     h('div', { class: 'row' }, btn, h('a', { class: 'secondary', href: '#/import' }, 'Import from Loyverse')), status);
+}
+
+// Loyverse live sync: Loyverse stays the till, this app mirrors its sales, prices, costs and stock.
+function loyverseSettings() {
+  const body = h('div');
+  const draw = async () => {
+    try {
+      const st = await run(db().from('loyverse_sync_state').select('*').maybeSingle());
+      if (!st) return clear(body, h('p', { class: 'muted' }, 'Loyverse sync is not set up on this database yet.'));
+      const r = st.last_result || {};
+      const warn = (r.warnings || []).length;
+      clear(body,
+        h('p', null, st.last_finished_at ? 'Last sync: ' + dateTime(st.last_finished_at) : 'Not synced yet.',
+          st.last_error ? h('span', { class: 'bad' }, ' · Problem: ' + st.last_error) : null),
+        st.last_finished_at && !st.last_error ? h('p', { class: 'muted small' },
+          `Products ${r.items ?? 0} · new sales ${r.sales ?? 0} · refunds ${r.refunds ?? 0} · stock corrected on ${r.stock_aligned ?? 0} products` +
+          (warn ? ` · ${warn} receipt(s) could not be recorded` : '')) : null,
+        h('p', { class: 'muted small' }, 'Sales from Loyverse appear with receipt numbers starting LV-. Record stock deliveries and counts in Loyverse; this app copies the result.'));
+    } catch (e) { clear(body, h('p', { class: 'muted' }, e.message)); }
+  };
+  const btn = h('button', { class: 'primary', type: 'button', onclick: () => withBusy(btn, async () => {
+    try {
+      const { data, error } = await db().functions.invoke('loyverse-sync', { body: {} });
+      if (error) throw error;
+      if (data?.ok === false) throw new Error(data.error);
+      toast(data?.skipped ? 'Synced less than a minute ago — try again shortly.' : `Synced: ${data?.result?.sales ?? 0} new sales.`);
+    } catch (e) { showError(e); }
+    await draw();
+  }) }, 'Sync now');
+  draw();
+  return card('Loyverse live sync', h('p', null, 'Every few minutes this app reads Loyverse: new sales and refunds, prices, costs and stock.'), body, h('div', { class: 'row' }, btn));
 }
 
 // Per-till layout lock (owner only). Saved on this computer, like the sizes themselves.
