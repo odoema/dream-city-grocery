@@ -15,12 +15,13 @@ export async function render(root) {
 
   async function show(next) {
     tab = next;
-    clear(tabHost, tabs([['summary', 'Profit & balance sheet'], ['expenses', 'Expenses'], ['ledger', 'Journal']], tab, show));
+    clear(tabHost, tabs([['summary', 'Profit & balance sheet'], ['expenses', 'Expenses'], ['owner', 'Owner money'], ['ledger', 'Journal']], tab, show));
     loading(host);
     const p = picker.get();
     try {
       if (tab === 'summary') await summary(p);
       else if (tab === 'expenses') await expenses(p);
+      else if (tab === 'owner') await ownerMoney(p);
       else await ledger(p);
     } catch (e) { showError(e); clear(host, h('p', { class: 'muted' }, e.message)); }
   }
@@ -120,6 +121,48 @@ export async function render(root) {
           { label: 'Debit', class: 'num', value: l => Number(l.debit) ? money(l.debit) : '' },
           { label: 'Credit', class: 'num', value: l => Number(l.credit) ? money(l.credit) : '' }
         ], j.journal_lines || []))) : h('p', { class: 'muted' }, 'No entries in this period.')));
+  }
+
+  async function ownerMoney(p) {
+    const rows = await run(db().from('money_movements').select('*').gte('created_at', p.from).lt('created_at', p.to).order('created_at', { ascending: false }));
+    const KIND = { capital: 'Capital put in', drawing: 'Taken out by owner', transfer: 'Transfer' };
+    const sum = k => rows.filter(r => r.kind === k).reduce((a, r) => a + Number(r.amount), 0);
+    clear(host,
+      h('div', { class: 'stats' }, stat('Capital put in', money(sum('capital')), p.label), stat('Taken out by owner', money(sum('drawing'))), stat('Transfers', money(sum('transfer')))),
+      card(h('div', { class: 'row between' }, h('h2', null, 'Owner money · ' + p.label),
+        h('div', { class: 'row' },
+          h('button', { class: 'secondary small', onclick: () => moneyForm('capital') }, '+ Capital in'),
+          h('button', { class: 'secondary small', onclick: () => moneyForm('drawing') }, '− Owner takes out'),
+          h('button', { class: 'primary small', onclick: () => moneyForm('transfer') }, '⇄ Transfer (e.g. cash to bank)'))),
+        h('p', { class: 'muted small' }, 'Money that is not a sale or an expense: the owner putting money in or taking it out, and moving money between the drawer, mobile money and the bank.'),
+        table([
+          { label: 'When', value: r => dateTime(r.created_at) },
+          { label: 'Number', value: r => r.movement_number },
+          { label: 'What', value: r => KIND[r.kind] },
+          { label: 'From', value: r => r.from_method ? paymentLabel(r.from_method) : 'Owner' },
+          { label: 'To', value: r => r.to_method ? paymentLabel(r.to_method) : 'Owner' },
+          { label: 'Note', value: r => r.note },
+          { label: 'Amount', class: 'num', value: r => money(r.amount) }
+        ], rows, { empty: 'Nothing in this period.' })));
+  }
+
+  function moneyForm(kind) {
+    const methods = ['cash', 'mobile_money', 'bank', 'card'].map(m => ({ value: m, label: paymentLabel(m) }));
+    const title = { capital: 'Owner puts money in', drawing: 'Owner takes money out', transfer: 'Move money' }[kind];
+    formModal({
+      title, subtitle: kind === 'transfer' ? 'For example: cash from the drawer banked, or mobile money withdrawn to cash.' : 'Recorded against the owner, not as a sale or an expense.',
+      fields: [
+        { name: 'amount', label: 'Amount', type: 'number', min: '0', step: 'any', required: true },
+        kind !== 'capital' ? { name: 'from', label: 'From', type: 'select', value: 'cash', options: methods } : null,
+        kind !== 'drawing' ? { name: 'to', label: kind === 'capital' ? 'Into' : 'To', type: 'select', value: kind === 'transfer' ? 'bank' : 'cash', options: methods } : null,
+        { name: 'note', label: 'Note', full: true }
+      ].filter(Boolean),
+      onSubmit: async v => {
+        const r = await rpc('record_money_movement', { p_kind: kind, p_amount: v.amount, p_from: v.from || null, p_to: v.to || null, p_note: v.note || '' });
+        toast(r.movement_number + ' recorded.');
+        show(tab);
+      }
+    });
   }
 
   function printVoucher(r) {
