@@ -47,6 +47,10 @@ function rest(table, url) {
     case 'import_batches': return [];
     case 'inventory_movements': return [{ created_at: now, movement_type: 'sale', quantity_delta: -2, unit_cost: 4200, note: 'Sale TG-000001', products: { name: 'Sugar 1kg', sku: 'SUG1', unit: 'piece' }, who: { full_name: 'Brian Owner' } }];
     case 'stock_adjustments': return [];
+    case 'sale_items': return [{ id: 'si1', product_name: 'Sugar 1kg', quantity: 1, returned_quantity: 0, unit_price: 5000, line_total: 5000 }];
+    case 'cash_ups': return [{ cash_up_number: 'CU-00001', created_at: now, receipts: 3, expected_cash: 35000, counted_cash: 34000, difference: -1000, notes: '', staff: { full_name: 'Brian Owner' } }];
+    case 'sale_returns': return [];
+    case 'money_movements': return [{ id: 'm1', movement_number: 'MOV-00001', kind: 'transfer', amount: 30000, from_method: 'cash', to_method: 'bank', note: 'Banking', created_at: now }];
     case 'supplier_returns': return [];
     default: return [];
   }
@@ -68,6 +72,10 @@ function rpc(name) {
     case 'get_inventory_intelligence': return intel;
     case 'get_sales_by_item': return { items: [{ product_id: 'p1', name: 'Sugar 1kg', sku: 'SUG1', category: 'Food', quantity: 3, revenue: 15000, cost: 12600, profit: 2400, refunded_qty: 0 }], categories: [{ category: 'Food', quantity: 3, revenue: 15000, profit: 2400 }] };
     case 'adjust_stock': return { id: 'a1', adjustment_number: 'ADJ-000001', lines: 1, gain: 0, loss: 8400, journal_id: 'j1' };
+    case 'get_cash_up_preview': return { from: now, to: now, last_float: 20000, receipts: 3, cash_sales: 15000, cash_refunds: 0, cash_in_other: 0, cash_out_other: 0, by_method: { cash: 15000 } };
+    case 'close_cash_up': return { id: 'cu1', cash_up_number: 'CU-00001', expected_cash: 35000, counted_cash: 34000, difference: -1000 };
+    case 'return_sale_items': return { return_id: 'rt1', return_number: 'RTN-000001', amount: 5000, refund_method: 'cash', fully_returned: false };
+    case 'record_money_movement': return { id: 'm1', movement_number: 'MOV-00001' };
     case 'return_to_supplier': return { id: 'r1', return_number: 'RET-000001', total: 4200 };
     default: return null;
   }
@@ -111,11 +119,14 @@ const step = async (name, fn) => { try { await fn(); console.log('PASS', name); 
 await page.goto('http://app.test/');
 await step('login page shows shop name', async () => { await page.locator('img[alt="Test Grocery"]').first().waitFor({ timeout: 8000 }); });
 await page.screenshot({ path: 'tests/screens/login.png' });
-await step('sign in reaches home', async () => {
+await step('sign in lands on the Dashboard; menu is short', async () => {
   await page.fill('#login-email', 'owner@shop.test');
   await page.fill('#login-password', 'secret123');
   await page.click('button[type=submit]');
-  await page.getByText("Today's sales").waitFor({ timeout: 8000 });
+  await page.getByText('Executive dashboard').first().waitFor({ timeout: 8000 });
+  const labels = await page.$$eval('.sidebar nav .nav-link', a => a.map(x => x.textContent.trim()));
+  for (const gone of ['Home', 'Import data', 'Count stock']) if (labels.includes(gone)) throw new Error(gone + ' should not be in the menu');
+  for (const want of ['Dashboard', 'Close day', 'Settings']) if (!labels.includes(want)) throw new Error(want + ' missing from menu: ' + labels.join(','));
 });
 await page.screenshot({ path: 'tests/screens/home.png' });
 for (const [route, text] of [['products', 'Stock value'], ['customers', 'Total owed to you'], ['buy', 'items to buy'], ['count', 'Start a stock count'], ['reports', 'Best sellers'], ['accounts', 'Trial balance'], ['staff', 'What each role can do'], ['settings', 'Receipt preview'], ['import', 'Recommended order']]) {
@@ -211,12 +222,41 @@ await step('layout lock: borders movable by default, owner can lock', async () =
   await page.getByLabel('Lock layout').uncheck();
   if (await page.locator('.sidebar-resizer').count()) throw new Error('menu border should be gone');
 });
+await step('close day: count drawer, see difference, day report', async () => {
+  await page.goto('http://app.test/#/close');
+  await page.getByText('Count my drawer').waitFor({ timeout: 8000 });
+  await page.getByLabel('Cash counted now').fill('34000');
+  const diff = await page.locator('.cashup-result strong').nth(1).textContent();
+  if (!/Short/.test(diff)) throw new Error('difference not shown: ' + diff);
+  await page.getByText('Send on WhatsApp').waitFor();
+  await page.screenshot({ path: 'tests/screens/close-day.png', fullPage: true });
+});
+await step('reports: return items dialog', async () => {
+  await page.goto('http://app.test/#/reports');
+  await page.getByRole('button', { name: 'Return', exact: true }).first().click();
+  await page.getByText('Refund selected').waitFor({ timeout: 5000 });
+  await page.keyboard.press('Escape');
+});
+await step('accounts: owner money tab', async () => {
+  await page.goto('http://app.test/#/accounts');
+  await page.getByRole('tab', { name: 'Owner money' }).click();
+  await page.getByText('MOV-00001').waitFor({ timeout: 5000 });
+});
+await step('settings: backup button; offline banner', async () => {
+  await page.goto('http://app.test/#/settings');
+  await page.getByRole('button', { name: 'Download backup' }).waitFor();
+  await page.context().setOffline(true);
+  await page.locator('.offline-bar').waitFor({ timeout: 3000 });
+  await page.context().setOffline(false);
+  await page.waitForTimeout(300);
+  if (await page.locator('.offline-bar').count()) throw new Error('offline banner did not clear');
+});
 await step('mobile layout has no horizontal scroll', async () => {
   await page.setViewportSize({ width: 375, height: 800 });
-  for (const r of ['home', 'sell', 'products', 'buy', 'inventory']) {
+  for (const r of ['executive', 'sell', 'close', 'products', 'buy', 'inventory']) {
     await page.goto('http://app.test/#/' + r); await page.waitForTimeout(500);
     const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-    if (over > 1) throw new Error(r + ' overflows by ' + over + 'px');
+    if (over > 1) { const who = await page.evaluate(() => [...document.querySelectorAll('main *')].filter(e => e.getBoundingClientRect().right > window.innerWidth + 1).slice(0, 6).map(e => e.tagName + '.' + e.className).join(' | ')); throw new Error(r + ' overflows by ' + over + 'px: ' + who); }
   }
   await page.goto('http://app.test/#/sell'); await page.waitForTimeout(500);
   await page.screenshot({ path: 'tests/screens/mobile-sell.png', fullPage: true });
