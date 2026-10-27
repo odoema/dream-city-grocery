@@ -30,6 +30,12 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run test:db
+      # Clicks through every screen in a real browser (mocked database) before publishing.
+      - name: Browser smoke test
+        run: |
+          npm install -g playwright@1.56.1
+          npx -y playwright@1.56.1 install --with-deps chromium
+          mkdir -p tests/screens && npm run test:smoke
       - name: Build
         run: npm run build
       # White-label: a shop that forks this repo can set repository variables
