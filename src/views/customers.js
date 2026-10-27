@@ -37,7 +37,7 @@ export async function render(root) {
       { label: 'Credit limit', class: 'num', value: c => money(c.credit_limit) },
       { label: 'Owes', class: 'num', value: c => Number(c.balance) > 0 ? h('b', { class: 'warn' }, money(c.balance)) : '—' },
       { label: '', class: 'actions', value: c => h('div', { class: 'row' },
-        Number(c.balance) > 0 ? h('button', { class: 'link', onclick: e => { e.stopPropagation(); pay(c); } }, 'Receive payment') : null,
+        Number(c.balance) > 0 ? h('button', { class: 'link write-action', onclick: e => { e.stopPropagation(); pay(c); } }, 'Receive payment') : null,
         can.manageCustomers() ? h('button', { class: 'link', onclick: e => { e.stopPropagation(); edit(c); } }, 'Edit') : null) }
     ], rows, { empty: 'No customers yet.', onRow: statement }));
   }
