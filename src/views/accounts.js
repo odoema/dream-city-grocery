@@ -11,7 +11,7 @@ export async function render(root) {
   const host = h('div');
   const picker = periodPicker(() => show(tab), 'month');
   clear(root, pageHeader('Accounts', 'Profit, what the shop owns and owes, and expenses. Built automatically from every sale, purchase and count.',
-    picker.el, h('button', { class: 'primary', onclick: recordExpense }, '+ Record expense')), tabHost, host);
+    picker.el, h('button', { class: 'primary write-action', onclick: recordExpense }, '+ Record expense')), tabHost, host);
 
   async function show(next) {
     tab = next;
@@ -130,7 +130,7 @@ export async function render(root) {
     clear(host,
       h('div', { class: 'stats' }, stat('Capital put in', money(sum('capital')), p.label), stat('Taken out by owner', money(sum('drawing'))), stat('Transfers', money(sum('transfer')))),
       card(h('div', { class: 'row between' }, h('h2', null, 'Owner money · ' + p.label),
-        h('div', { class: 'row' },
+        h('div', { class: 'row write-action' },
           h('button', { class: 'secondary small', onclick: () => moneyForm('capital') }, '+ Capital in'),
           h('button', { class: 'secondary small', onclick: () => moneyForm('drawing') }, '− Owner takes out'),
           h('button', { class: 'primary small', onclick: () => moneyForm('transfer') }, '⇄ Transfer (e.g. cash to bank)'))),
