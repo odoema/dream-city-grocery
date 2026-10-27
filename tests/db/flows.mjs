@@ -229,3 +229,66 @@ assert.ok(byItem.r.items.length && byItem.r.categories.length);
 pass('inventory intelligence + sales by item');
 await balanced();
 console.log('ALL INVENTORY TESTS PASSED');
+
+// ---------------------------------------------------------------- daily controls
+{
+  const sug = await one(`select id, quantity_on_hand q, buying_price c from products where sku='SUG1'`);
+  // Weighted average: receiving at a new cost blends with stock on hand.
+  const q0 = Number(sug.q), c0 = Number(sug.c);
+  await rpc(OWNER, `select public.record_shop_purchase(null,'Nebbi Market',$1::jsonb,'cash','AVG-1',null,'') r`, [JSON.stringify([{ product_id: sug.id, quantity: 10, unit_cost: 6000 }])]);
+  const c1 = Number((await one(`select buying_price c from products where id=$1`, [sug.id])).c);
+  assert.equal(c1, Math.round((q0 * c0 + 60000) / (q0 + 10) * 100) / 100); pass('weighted-average cost on receiving');
+
+  // Partial return of a cash sale with a discount.
+  const sale = await rpc(OWNER, `select public.complete_sale($1::jsonb,'cash',$2,null,1) r`, [JSON.stringify([{ product_id: sug.id, quantity: 4 }]), crypto.randomUUID()]);
+  const item = await one(`select id, line_total from sale_items where sale_id=$1`, [sale.r.sale_id]);
+  await expectFail(STRANGER, `select public.return_sale_items($1,$2::jsonb,'x')`, [sale.r.sale_id, JSON.stringify([{ sale_item_id: item.id, quantity: 1 }])], /not allowed|inactive/);
+  const r1 = await rpc(OWNER, `select public.return_sale_items($1,$2::jsonb,'Damaged pack') r`, [sale.r.sale_id, JSON.stringify([{ sale_item_id: item.id, quantity: 1 }])]);
+  assert.equal(r1.r.fully_returned, false);
+  await expectFail(OWNER, `select public.return_sale_items($1,$2::jsonb,'x')`, [sale.r.sale_id, JSON.stringify([{ sale_item_id: item.id, quantity: 9 }])], /can still be returned/);
+  const r2 = await rpc(OWNER, `select public.refund_sale($1,'Rest returned') r`, [sale.r.sale_id]);
+  assert.equal(r2.r.fully_returned, true);
+  assert.equal(Number(r1.r.amount) + Number(r2.r.amount), Number(sale.r.total));
+  const st = await one(`select status, returned_amount from sales where id=$1`, [sale.r.sale_id]);
+  assert.equal(st.status, 'refunded'); assert.equal(Number(st.returned_amount), Number(sale.r.total));
+  await balanced(); pass('partial return then refund of the rest settles exactly');
+
+  // Credit sale partial return lowers the customer balance.
+  const cust = await asUser(OWNER, () => one(`insert into customers(name, credit_limit) values('Return test', 1000000) returning id`));
+  const b0 = Number((await one(`select public.customer_balance($1) b`, [cust.id])).b);
+  const cs = await rpc(OWNER, `select public.complete_sale($1::jsonb,'credit',$2,$3) r`, [JSON.stringify([{ product_id: sug.id, quantity: 1 }]), crypto.randomUUID(), cust.id]);
+  {
+    const ci = await one(`select id from sale_items where sale_id=$1`, [cs.r.sale_id]);
+    await rpc(OWNER, `select public.return_sale_items($1,$2::jsonb,'Wrong item') r`, [cs.r.sale_id, JSON.stringify([{ sale_item_id: ci.id, quantity: 1 }])]);
+    assert.equal(Number((await one(`select public.customer_balance($1) b`, [cust.id])).b), b0);
+    await balanced(); pass('credit return reduces what the customer owes');
+  }
+
+  // Owner money.
+  await expectFail(CASHIER, `select public.record_money_movement('capital',1000,null,'cash','')`, [], /not allowed/);
+  await rpc(OWNER, `select public.record_money_movement('capital',500000,null,'bank','Start-up') r`);
+  await rpc(OWNER, `select public.record_money_movement('drawing',20000,'cash',null,'School fees') r`);
+  await rpc(OWNER, `select public.record_money_movement('transfer',30000,'cash','bank','Banking') r`);
+  await expectFail(OWNER, `select public.record_money_movement('transfer',1,'mobile_money','card','')`, [], /same account/);
+  await balanced(); pass('owner capital, drawings and transfers');
+
+  // Close day: cashier sells 2 sugar for cash, counts 1,000 short.
+  const cashSale = await rpc(CASHIER, `select public.complete_sale($1::jsonb,'cash',$2) r`, [JSON.stringify([{ product_id: sug.id, quantity: 2 }]), crypto.randomUUID()]);
+  const prev = await rpc(CASHIER, `select public.get_cash_up_preview() r`);
+  assert.ok(Number(prev.r.cash_sales) >= Number(cashSale.r.total));
+  const expected = 20000 + Number(prev.r.cash_sales) - Number(prev.r.cash_refunds) + Number(prev.r.cash_in_other) - Number(prev.r.cash_out_other);
+  const cu = await rpc(CASHIER, `select public.close_cash_up(20000,$1,'') r`, [expected - 1000]);
+  assert.equal(Number(cu.r.difference), -1000);
+  const after = await rpc(CASHIER, `select public.get_cash_up_preview() r`);
+  assert.equal(Number(after.r.cash_sales), 0); assert.equal(Number(after.r.last_float), 20000);
+  const seen = await asUser(CASHIER, () => q(`select id from cash_ups`));
+  assert.equal(seen.length, 1);
+  await balanced(); pass('close day: expected vs counted, shortage posted, next period starts fresh');
+
+  const sum2 = await rpc(OWNER, `select public.get_sales_summary(now()-interval '1 day', now()+interval '1 day') r`);
+  const fs2 = await rpc(OWNER, `select public.get_financial_statements(now()-interval '1 day', now()+interval '1 day') r`);
+  assert.equal(Number(fs2.r.balance_sheet.total_assets), Number(fs2.r.balance_sheet.total_liabilities_equity));
+  assert.ok(Number(sum2.r.refunds) > 0);
+  pass('summary and balance sheet still balance after returns, cash-up and owner money');
+}
+console.log('ALL DAILY CONTROL TESTS PASSED');
