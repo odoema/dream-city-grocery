@@ -120,6 +120,10 @@ const step = async (name, fn) => { try { await fn(); console.log('PASS', name); 
 await page.goto('http://app.test/');
 await step('login page shows shop name', async () => { await page.locator('img[alt="Test Grocery"]').first().waitFor({ timeout: 8000 }); });
 await page.screenshot({ path: 'tests/screens/login.png' });
+await step('login logo is centred in its panel', async () => {
+  const off = await page.evaluate(() => { const i = document.querySelector('.auth-brand img').getBoundingClientRect(), p = document.querySelector('.auth-story').getBoundingClientRect(); return Math.abs((i.left + i.right) / 2 - (p.left + p.right) / 2); });
+  if (off > 8) throw new Error('login logo is ' + Math.round(off) + 'px off centre');
+});
 await step('sign in lands on the Dashboard; menu is short', async () => {
   await page.fill('#login-email', 'owner@shop.test');
   await page.fill('#login-password', 'secret123');
