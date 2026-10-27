@@ -55,6 +55,7 @@ export async function render(root) {
         h('p', { class: 'eyebrow' }, 'Executive dashboard'),
         h('h1', null, s.business_name || 'Our shop'),
         h('p', { class: 'exec-tag' }, s.tagline || 'Performance at a glance'),
+        s.director_name ? h('p', { class: 'exec-for' }, 'Prepared for ', h('b', null, s.director_name), ', ' + (s.director_title || 'Executive Director')) : null,
         h('div', { class: 'exec-live' }, live, updated)),
       h('div', { class: 'exec-actions' }, periodSel, h('div', { class: 'row' }, presentBtn, printBtn))),
     is('owner') && backupDue() ? h('div', { class: 'notice-bar no-print' }, h('span', null, 'No backup downloaded on this computer in the last day.'), h('a', { class: 'secondary small', href: '#/settings' }, 'Back up now')) : null,
