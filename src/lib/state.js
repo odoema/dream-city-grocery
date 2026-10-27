@@ -8,7 +8,7 @@ export const state = {
   publicProfile: null
 };
 
-export const ROLES = ['owner', 'manager', 'accountant', 'cashier'];
+export const ROLES = ['owner', 'manager', 'accountant', 'cashier', 'executive_director'];
 
 export const can = {
   manageCatalogue: () => is('owner', 'manager'),
@@ -30,5 +30,11 @@ export function is(...roles) {
 }
 
 export function roleLabel(role) {
-  return { owner: 'Owner', manager: 'Manager', accountant: 'Accountant', cashier: 'Cashier' }[role] || role;
+  return {
+    owner: 'Owner',
+    manager: 'Manager',
+    accountant: 'Accountant',
+    cashier: 'Cashier',
+    executive_director: 'Executive Director'
+  }[role] || role;
 }
