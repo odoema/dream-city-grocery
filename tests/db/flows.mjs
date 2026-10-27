@@ -292,3 +292,49 @@ console.log('ALL INVENTORY TESTS PASSED');
   pass('summary and balance sheet still balance after returns, cash-up and owner money');
 }
 console.log('ALL DAILY CONTROL TESTS PASSED');
+
+// ---------------------------------------------------------------- Loyverse live sync
+{
+  const asService = async (sql, params) => { await db.exec('set role service_role'); try { return await one(sql, params); } finally { await db.exec('reset role'); } };
+  await expectFail(OWNER, `select public.loyverse_sync_begin()`, [], /permission denied/);
+  const b = await asService(`select public.loyverse_sync_begin() r`);
+  assert.equal(b.r.run, true);
+  const again = await asService(`select public.loyverse_sync_begin() r`);
+  assert.equal(again.r.run, false); pass('sync: service role only, throttled');
+
+  const now = new Date().toISOString();
+  const items = [
+    { variant_id: 'v-sugar', sku: 'SUG1', name: 'Sugar 1kg', category: 'Food', price: 5200, cost: 4300, track_stock: true },
+    { variant_id: 'v-new', sku: 'NEWLV1', barcode: '999111', name: 'Loyverse Only Item', category: 'Snacks', price: 1000, cost: 600, track_stock: true }
+  ];
+  const receipts = [
+    { number: '1-1001', type: 'sale', created_at: now, payment: 'cash', total: 9400, employee: 'Nobody', lines: [
+      { variant_id: 'v-sugar', sku: 'SUG1', name: 'Sugar 1kg', quantity: 1, price: 5200, gross: 5200, cost_total: 4300 },
+      { variant_id: 'v-new', sku: 'NEWLV1', name: 'Loyverse Only Item', quantity: 5, price: 1000, gross: 5000, cost_total: 3000 }] },
+    { number: '1-1002', type: 'sale', created_at: now, payment: 'mobile_money', total: 1000, lines: [
+      { variant_id: 'v-new', sku: 'NEWLV1', name: 'Loyverse Only Item', quantity: 1, price: 1000, gross: 1000, cost_total: 600 }] },
+    { number: '1-1003', type: 'refund', refund_for: '1-1001', created_at: now, payment: 'cash', total: 1000, lines: [
+      { variant_id: 'v-new', sku: 'NEWLV1', name: 'Loyverse Only Item', quantity: 1, price: 1000 }] },
+    { number: '1-1004', type: 'sale', created_at: now, cancelled: true, payment: 'cash', total: 1, lines: [] },
+    { number: '1-1005', type: 'refund', refund_for: '1-0001', created_at: now, payment: 'cash', total: 1, lines: [] }
+  ];
+  const levels = [{ variant_id: 'v-sugar', in_stock: 40 }, { variant_id: 'v-new', in_stock: 12 }];
+  const res = await asService(`select public.loyverse_sync_apply($1::jsonb,$2::jsonb,$3::jsonb,now()) r`, [JSON.stringify(items), JSON.stringify(receipts), JSON.stringify(levels)]);
+  console.log('  sync result:', JSON.stringify(res.r));
+  assert.equal(res.r.sales, 2); assert.equal(res.r.refunds, 1); assert.equal(res.r.skipped, 2); assert.equal(res.r.warnings.length, 0);
+  const s = await one(`select total, discount, subtotal, status, returned_amount from sales where receipt_number='LV-1-1001'`);
+  assert.equal(Number(s.total), 9400); assert.equal(Number(s.discount), 800); assert.ok(Number(s.returned_amount) > 0);
+  const p = await one(`select quantity_on_hand q, selling_price sp, buying_price bp from products where sku='NEWLV1'`);
+  assert.equal(Number(p.q), 12); assert.equal(Number(p.sp), 1000);
+  assert.equal(Number((await one(`select quantity_on_hand q from products where sku='SUG1'`)).q), 40);
+  await balanced(); pass('sync: items, sales with discount, refund, cancelled/unknown skipped, stock aligned, books balance');
+
+  await db.exec(`update loyverse_sync_state set last_started_at = now() - interval '2 minutes'`);
+  const res2 = await asService(`select public.loyverse_sync_apply($1::jsonb,$2::jsonb,$3::jsonb,now()) r`, [JSON.stringify(items), JSON.stringify(receipts), JSON.stringify(levels)]);
+  assert.equal(res2.r.sales, 0); assert.equal(res2.r.refunds, 0); assert.equal(res2.r.stock_aligned, 0);
+  assert.equal(Number((await one(`select count(*) n from sales where receipt_number like 'LV-%'`)).n), 2);
+  await balanced(); pass('sync: running twice changes nothing');
+  const fs3 = await rpc(OWNER, `select public.get_financial_statements(now()-interval '1 day', now()+interval '1 day') r`);
+  assert.equal(Number(fs3.r.balance_sheet.total_assets), Number(fs3.r.balance_sheet.total_liabilities_equity));
+}
+console.log('ALL LOYVERSE SYNC TESTS PASSED');
