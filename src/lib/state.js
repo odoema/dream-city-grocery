@@ -35,6 +35,6 @@ export function roleLabel(role) {
     manager: 'Manager',
     accountant: 'Accountant',
     cashier: 'Cashier',
-    executive_director: 'Executive Director'
+    executive_director: 'View only'
   }[role] || role;
 }
