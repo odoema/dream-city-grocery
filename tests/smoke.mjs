@@ -303,6 +303,6 @@ await step('every role has a working menu', async () => {
   mockRole = 'owner';
 });
 await browser.close();
-const real = errors.filter(e => !/Failed to load resource|WebSocket connection/.test(e));
+const real = errors.filter(e => !/Failed to load resource|WebSocket connection|No connection to the server/.test(e)); // the offline test causes the last one on purpose
 console.log(real.length ? '\nERRORS:\n' + real.join('\n') : '\nSMOKE TEST PASSED');
 process.exit(real.length ? 1 : 0);
