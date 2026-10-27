@@ -14,6 +14,7 @@ const P = {
   staff: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.8 2.9-6 6.5-6s6.5 2.2 6.5 6"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8"/><path d="M18 14.3c2.2.7 3.5 2.6 3.5 5.7"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9 7 7M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>',
   dashboard: '<path d="M3 13a9 9 0 0 1 18 0"/><path d="m12 13 4-4"/><circle cx="12" cy="13" r="1.6"/><path d="M4 17h16"/><path d="M7 21h10"/>',
+  close: '<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>'
 };
 
