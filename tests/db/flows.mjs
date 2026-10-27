@@ -360,3 +360,32 @@ console.log('ALL REPORT TESTS PASSED');
   await expectFail(CASHIER, `select public.update_store_settings($1)`, [{ director_name: 'x' }], /not allowed/);
   pass('executive director saved in shop settings (owner only)');
 }
+
+// ---------------------------------------------------------------- view-only staff
+{
+  await rpc(OWNER, `select public.set_staff_member($1,'Viewer','executive_director',true) r`, [STRANGER]);
+  const sum = await rpc(STRANGER, `select public.get_sales_summary(now()-interval '1 day', now()+interval '1 day') r`);
+  assert.equal(sum.r.scope, 'shop');
+  const fs = await rpc(STRANGER, `select public.get_financial_statements(now()-interval '1 day', now()+interval '1 day') r`);
+  assert.ok(fs.r.balance_sheet);
+  await rpc(STRANGER, `select public.get_inventory_intelligence(30) r`);
+  const seen = await asUser(STRANGER, () => q(`select count(*) n from expenses`));
+  const all = await q(`select count(*) n from expenses`);
+  assert.equal(Number(seen[0].n), Number(all[0].n));
+  assert.ok(Number((await asUser(STRANGER, () => q(`select count(*) n from journals`)))[0].n) > 0);
+  const p = await one(`select id from products where sku='SUG1'`);
+  await expectFail(STRANGER, `select public.complete_sale($1::jsonb,'cash',$2)`, [JSON.stringify([{ product_id: p.id, quantity: 1 }]), crypto.randomUUID()], /read-only|not allowed/);
+  await expectFail(STRANGER, `select public.record_expense('x',100,'cash')`, [], /not allowed/);
+  await expectFail(STRANGER, `select public.record_money_movement('transfer',100,'cash','bank','')`, [], /not allowed/);
+  await expectFail(STRANGER, `select public.adjust_stock('damaged',$1::jsonb,'')`, [JSON.stringify([{ product_id: p.id, quantity_delta: -1 }])], /not allowed/);
+  await expectFail(STRANGER, `select public.update_store_settings($1)`, [{ business_name: 'x' }], /not allowed/);
+  const before = Number((await one(`select selling_price v from products where id=$1`, [p.id])).v);
+  await asUser(STRANGER, () => q(`update products set selling_price = 1 where id = $1`, [p.id])).catch(() => null);
+  assert.equal(Number((await one(`select selling_price v from products where id=$1`, [p.id])).v), before, 'view-only user changed a price');
+  const cust = await one(`select id from customers limit 1`);
+  await expectFail(STRANGER, `select public.receive_customer_payment($1,100,'cash','')`, [cust.id], /view-only/);
+  await expectFail(STRANGER, `select public.close_cash_up(0,0,'')`, [], /view-only/);
+  await rpc(CASHIER, `select public.get_cash_up_preview() r`);
+  pass('view-only staff: see everything, change nothing');
+}
+console.log('ALL VIEW-ONLY TESTS PASSED');
