@@ -142,3 +142,20 @@ The presentation layer is intentionally centralized: improve the shared receipt/
 ### 7. Suggested next prompt for a new AI
 
 > "Read README.md, AI_START_HERE.md and docs/BRAND.md in odoema/dream-city-grocery. Preserve the production Supabase architecture. Build roadmap item #1 using the existing security and accounting patterns, and keep all printed output on the shared brand/document system."
+
+## Daily controls (added 28 Oct 2026)
+
+Migration `supabase/migrations/20261028000100_daily_controls.sql` (run once in the SQL editor) adds:
+
+| Feature | Where in the app | Database |
+| --- | --- | --- |
+| Close day (cash-up per person, shortage/surplus posted to 6200) and a day report for managers (print, copy, WhatsApp) | **Close day** | `cash_ups`, `get_cash_up_preview()`, `close_cash_up()` |
+| Return some or all items of a sale | **Reports → Receipt archive → Return** | `sale_returns`, `return_sale_items()`; `refund_sale()` now returns everything left |
+| Owner capital in, drawings out, transfers (cash ↔ mobile money ↔ bank) | **Accounts → Owner money** | `money_movements`, `record_money_movement()`, account 3300 |
+| Weighted-average buying price when stock is received | automatic | `receive_supplier_invoice()` |
+| One-file backup download + daily reminder on the Dashboard | **Settings → Backup & data** | reads tables under the owner's RLS |
+| Offline banner; instant Dashboard (realtime on `sales`) | everywhere | publication `supabase_realtime` |
+
+The menu is shorter: Home merged into Dashboard (cashiers land on Sell), **Import** moved to Settings, **Count stock** opened from Inventory. Old links still work.
+
+CI now runs the browser click-through test (`npm run test:smoke`) before every deploy, in addition to the unit and database tests. Source maps are no longer published.
