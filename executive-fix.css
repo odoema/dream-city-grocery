@@ -1,0 +1,35 @@
+/* Executive dashboard viewport fixes.
+   Loaded after the main application stylesheet so the executive view remains
+   readable when Chrome/Windows scaling gives the page a wide CSS viewport
+   while the physical screen is narrower. */
+
+.exec { min-width: 0; }
+.exec .kpis { container-type: inline-size; }
+.exec .kpi-value { min-width: 0; }
+
+/* Six KPI cards can become narrow on laptop/Windows-scaled desktop screens.
+   Scale the value rather than allowing the browser to replace the amount with … . */
+@container (max-width: 1180px) {
+  .exec .kpi { padding-left: .9rem; padding-right: .9rem; }
+  .exec .kpi-value {
+    font-size: 1.35rem;
+    letter-spacing: -.02em;
+  }
+  .exec .kpi-foot { gap: .35rem; }
+  .exec .kpi-foot .muted { font-size: .78rem; }
+}
+
+@container (max-width: 1050px) {
+  .exec .kpi-value { font-size: 1.25rem; }
+}
+
+/* Keep the executive header controls comfortably inside the hero on
+   medium desktop widths. */
+@media (min-width: 861px) and (max-width: 1200px) {
+  .exec-hero { padding: 1.35rem 1.45rem; }
+  .seg-pills button { padding-left: .65rem; padding-right: .65rem; }
+}
+
+/* Prevent long prepared-for names from forcing the hero wider. */
+.exec-hero-text { min-width: 0; }
+.exec-for { overflow-wrap: anywhere; }
