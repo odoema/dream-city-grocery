@@ -127,6 +127,52 @@ function renderConfigError(problems) {
 
 window.addEventListener('unhandledrejection', e => { if (e.reason) showError(e.reason); });
 if ('serviceWorker' in navigator && location.protocol === 'https:') window.addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update()).catch(() => {}));
+
+// Browsers decide when a PWA is installable. Chromium exposes a one-use prompt
+// that we surface behind a deliberate tap; iOS requires Share > Add to Home Screen.
+let deferredInstallPrompt = null;
+let installNudge = null;
+const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+function dismissInstallNudge() {
+  installNudge?.remove();
+  installNudge = null;
+  document.body.classList.remove('install-available');
+}
+
+function showInstallNudge({ title, message, action }) {
+  if (installNudge || isStandalone() || sessionStorage.getItem('pwa-install-nudge-dismissed')) return;
+  const close = () => { sessionStorage.setItem('pwa-install-nudge-dismissed', '1'); dismissInstallNudge(); };
+  installNudge = h('section', { class: 'install-bar', role: 'status', 'aria-label': 'Install Dream City Grocery' },
+    h('div', null, h('b', null, title), h('span', null, message)),
+    h('div', { class: 'install-actions' }, action ? h('button', { class: 'primary small', type: 'button', onclick: action }, 'Install app') : null,
+      h('button', { class: 'link install-dismiss', type: 'button', 'aria-label': 'Dismiss install message', onclick: close }, 'Not now')));
+  document.body.append(installNudge);
+  document.body.classList.add('install-available');
+}
+
+window.addEventListener('beforeinstallprompt', event => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  showInstallNudge({
+    title: 'Install Dream City Grocery',
+    message: 'Add it to this device for faster access.',
+    action: async () => {
+      const prompt = deferredInstallPrompt;
+      deferredInstallPrompt = null;
+      if (!prompt) return;
+      await prompt.prompt();
+      dismissInstallNudge();
+    }
+  });
+});
+
+window.addEventListener('appinstalled', dismissInstallNudge);
+if (isIOS() && !isStandalone()) {
+  showInstallNudge({ title: 'Install on this iPhone or iPad', message: 'Open in Safari, tap Share, then choose Add to Home Screen.' });
+}
+
 const myBuild = [...document.scripts].map(x => x.src).find(src => /assets\/index-[^/]+\.js$/.test(src)) || '';
 let updateReady = false;
 async function checkForUpdate() {

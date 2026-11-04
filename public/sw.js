@@ -1,6 +1,6 @@
 // App-shell cache so the app opens quickly and survives brief network drops.
 // Database (Supabase) requests are never cached: sales must always hit the server.
-const CACHE = 'pos-shell-v2';
+const CACHE = 'pos-shell-v3';
 self.addEventListener('install', e => { self.skipWaiting(); });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));

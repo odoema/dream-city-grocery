@@ -120,6 +120,15 @@ const step = async (name, fn) => { try { await fn(); console.log('PASS', name); 
 
 await page.goto('http://app.test/');
 await step('login page shows shop name', async () => { await page.locator('img[alt="Test Grocery"]').first().waitFor({ timeout: 8000 }); });
+await step('PWA install prompt offers an install button', async () => {
+  await page.evaluate(() => {
+    const event = new Event('beforeinstallprompt', { cancelable: true });
+    Object.defineProperty(event, 'prompt', { value: async () => ({ outcome: 'dismissed' }) });
+    window.dispatchEvent(event);
+  });
+  await page.getByRole('button', { name: 'Install app' }).click();
+  if (await page.getByRole('button', { name: 'Install app' }).count()) throw new Error('install prompt did not close after use');
+});
 await page.screenshot({ path: 'tests/screens/login.png' });
 await step('login logo is centred in its panel', async () => {
   const off = await page.evaluate(() => { const i = document.querySelector('.auth-brand img').getBoundingClientRect(), p = document.querySelector('.auth-story').getBoundingClientRect(); return Math.abs((i.left + i.right) / 2 - (p.left + p.right) / 2); });
