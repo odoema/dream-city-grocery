@@ -1,35 +1,168 @@
-/* Executive dashboard viewport fixes.
-   Loaded after the main application stylesheet so the executive view remains
-   readable when Chrome/Windows scaling gives the page a wide CSS viewport
-   while the physical screen is narrower. */
+/* Executive dashboard numeric-fit and spacing fixes.
+   Loaded after src/styles.css; intentionally limited to the executive view. */
 
-.exec { min-width: 0; }
-.exec .kpis { container-type: inline-size; }
-.exec .kpi-value { min-width: 0; }
+.exec,
+.exec * {
+  min-width: 0;
+}
 
-/* Six KPI cards can become narrow on laptop/Windows-scaled desktop screens.
-   Scale the value rather than allowing the browser to replace the amount with … . */
-@container (max-width: 1180px) {
-  .exec .kpi { padding-left: .9rem; padding-right: .9rem; }
-  .exec .kpi-value {
-    font-size: 1.35rem;
-    letter-spacing: -.02em;
+.exec .kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 165px), 1fr));
+  gap: .85rem;
+  container-type: inline-size;
+  align-items: stretch;
+}
+
+.exec .kpi {
+  min-width: 0;
+  min-height: 148px;
+  height: auto;
+  padding: .95rem 1rem 1rem;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: .15rem;
+}
+
+.exec .kpi-label {
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.exec .kpi-value {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: .35rem 0 .45rem;
+  font-size: clamp(1rem, 1.65cqi, 1.4rem);
+  line-height: 1.2;
+  letter-spacing: -.025em;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.exec .kpi-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .35rem .45rem;
+  line-height: 1.35;
+  margin-top: auto;
+}
+
+.exec .kpi-foot small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.exec .kpi-spark {
+  position: absolute;
+  right: .75rem;
+  bottom: .65rem;
+  width: 68px;
+  max-width: 34%;
+  pointer-events: none;
+}
+
+/* Give the sparkline room without covering its KPI's supporting text. */
+.exec .kpi:has(.kpi-spark) {
+  padding-bottom: 2.65rem;
+}
+
+/* Other financial figures should also shrink/wrap rather than clip. */
+.exec .fin-pos,
+.exec .fin-pos-total,
+.exec .impact-card {
+  min-width: 0;
+}
+
+.exec .fin-pos strong,
+.exec .fin-pos-total strong,
+.exec .impact-card strong {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.exec .panel2,
+.exec .panel2-head,
+.exec .exec-grid > * {
+  min-width: 0;
+}
+
+.exec .exec-hero-text {
+  flex: 1 1 320px;
+}
+
+.exec .exec-actions {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.exec .seg-pills {
+  max-width: 100%;
+}
+
+.exec .exec-for {
+  overflow-wrap: anywhere;
+}
+
+/* Narrow laptop and tablet layouts: retain comfortable card padding. */
+@media (max-width: 1100px) {
+  .exec .kpis {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 175px), 1fr));
   }
-  .exec .kpi-foot { gap: .35rem; }
-  .exec .kpi-foot .muted { font-size: .78rem; }
+
+  .exec .kpi {
+    padding-left: .9rem;
+    padding-right: .9rem;
+  }
+
+  .exec .kpi-value {
+    font-size: clamp(1rem, 2.1cqi, 1.3rem);
+  }
 }
 
-@container (max-width: 1050px) {
-  .exec .kpi-value { font-size: 1.25rem; }
+@media (max-width: 700px) {
+  .exec .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .65rem;
+  }
+
+  .exec .kpi {
+    min-height: 136px;
+    padding: .85rem;
+  }
+
+  .exec .kpi-value {
+    font-size: clamp(1rem, 4.2vw, 1.3rem);
+  }
 }
 
-/* Keep the executive header controls comfortably inside the hero on
-   medium desktop widths. */
-@media (min-width: 861px) and (max-width: 1200px) {
-  .exec-hero { padding: 1.35rem 1.45rem; }
-  .seg-pills button { padding-left: .65rem; padding-right: .65rem; }
+@media (max-width: 390px) {
+  .exec .kpis {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
-/* Prevent long prepared-for names from forcing the hero wider. */
-.exec-hero-text { min-width: 0; }
-.exec-for { overflow-wrap: anywhere; }
+/* Respect browser zoom and prevent print-only clipping. */
+@media print {
+  .exec .kpi {
+    overflow: visible;
+    break-inside: avoid;
+  }
+
+  .exec .kpi-value {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+}
