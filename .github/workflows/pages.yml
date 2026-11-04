@@ -40,6 +40,9 @@ jobs:
           mkdir -p tests/screens && npm run test:smoke
       - name: Build
         run: npm run build
+      # Preserve the custom domain in the published Pages artifact.
+      - name: Add custom domain
+        run: cp CNAME dist/CNAME
       # White-label: a shop that forks this repo can set repository variables
       # SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY instead of editing public/config.json.
       - name: Write config.json from repository variables (optional)
